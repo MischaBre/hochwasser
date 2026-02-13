@@ -1,0 +1,29 @@
+services:
+  hochwasser-alert:
+    build: .
+    container_name: hochwasser-alert
+    restart: unless-stopped
+    environment:
+      PROVIDER: pegelonline
+      STATION_UUID: "7cb7461b-3530-4c01-8978-7f676b8f71ed"
+      LIMIT_CM: "250"
+      ALERT_RECIPIENTS: "alice@example.com,bob@example.com"
+
+      FORECAST_RUN_HOURS: "0,12"
+      FORECAST_HORIZON_HOURS: "72"
+      RISING_POINTS: "12"
+      MIN_SLOPE_CM_PER_HOUR: "0.1"
+      ALERT_DEDUPE_HOURS: "24"
+      TZ: Europe/Berlin
+
+      SMTP_HOST: smtp.example.com
+      SMTP_PORT: "587"
+      SMTP_USERNAME: my-user
+      SMTP_PASSWORD: my-password
+      SMTP_SENDER: hochwasser-alert@example.com
+      SMTP_USE_STARTTLS: "true"
+      SMTP_USE_SSL: "false"
+
+      STATE_FILE: /data/state.json
+    volumes:
+      - ./data:/data
