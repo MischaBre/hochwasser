@@ -5,24 +5,25 @@ services:
     restart: unless-stopped
     environment:
       PROVIDER: pegelonline
-      STATION_UUID: "7cb7461b-3530-4c01-8978-7f676b8f71ed"
-      LIMIT_CM: "250"
-      ALERT_RECIPIENTS: "alice@example.com,bob@example.com"
+      STATION_UUID: "a6ee8177-107b-47dd-bcfd-30960ccc6e9c"
+      LIMIT_CM: "600"
+      FORECAST_SERIES_SHORTNAME: "WV"
+      RUN_EVERY_MINUTE: "true"
+      ALERT_RECIPIENTS: "peter.ketges@gmx.de,gemsa.michael@gmail.com"
 
       FORECAST_RUN_HOURS: "0,12"
-      FORECAST_HORIZON_HOURS: "72"
-      RISING_POINTS: "12"
-      MIN_SLOPE_CM_PER_HOUR: "0.1"
+      FORECAST_HORIZON_HOURS: "96"
       ALERT_DEDUPE_HOURS: "24"
+      LOG_LEVEL: DEBUG
       TZ: Europe/Berlin
 
-      SMTP_HOST: smtp.example.com
-      SMTP_PORT: "587"
-      SMTP_USERNAME: my-user
-      SMTP_PASSWORD: my-password
-      SMTP_SENDER: hochwasser-alert@example.com
-      SMTP_USE_STARTTLS: "true"
-      SMTP_USE_SSL: "false"
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: "${SMTP_PORT}"
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_SENDER: ${SMTP_SENDER}
+      SMTP_USE_STARTTLS: "${SMTP_USE_STARTTLS}"
+      SMTP_USE_SSL: "${SMTP_USE_SSL}"
 
       STATE_FILE: /data/state.json
     volumes:

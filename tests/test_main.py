@@ -4,13 +4,16 @@ from pathlib import Path
 from app.config import Settings
 from app.main import (
     Crossing,
+    _next_minute_run_at,
     _next_run_at,
-    extrapolate_crossing,
+    build_email,
+    find_threshold_breach,
     find_crossing_from_forecast,
     remember_sent,
     should_send_alert,
 )
-from app.pegelonline import Measurement
+from app.pegelonline import Measurement, StationInfo
+from zoneinfo import ZoneInfo
 
 
 def make_settings() -> Settings:
@@ -18,10 +21,10 @@ def make_settings() -> Settings:
         provider="pegelonline",
         station_uuid="station-1",
         limit_cm=100.0,
+        forecast_series_shortname="WV",
+        run_every_minute=False,
         forecast_run_hours=(0, 12),
         forecast_horizon_hours=72,
-        rising_points=12,
-        min_slope_cm_per_hour=0.1,
         dedupe_hours=24,
         timezone="Europe/Berlin",
         smtp_host="smtp.example.com",
@@ -48,6 +51,12 @@ def test_next_run_next_day() -> None:
     assert result == datetime(2026, 2, 14, 0, 0, tzinfo=timezone.utc)
 
 
+def test_next_minute_run() -> None:
+    now = datetime(2026, 2, 13, 13, 1, 27, tzinfo=timezone.utc)
+    result = _next_minute_run_at(now)
+    assert result == datetime(2026, 2, 13, 13, 2, 0, tzinfo=timezone.utc)
+
+
 def test_find_crossing_from_forecast_within_horizon() -> None:
     now = datetime.now(tz=timezone.utc)
     points = [
@@ -69,26 +78,42 @@ def test_find_crossing_from_forecast_outside_horizon() -> None:
     assert crossing is None
 
 
-def test_extrapolate_crossing_trend() -> None:
-    now = datetime.now(tz=timezone.utc)
-    recent = [
-        Measurement(timestamp=now - timedelta(hours=2), value=90.0),
-        Measurement(timestamp=now - timedelta(hours=1), value=95.0),
-        Measurement(timestamp=now, value=100.0),
-    ]
-    current = Measurement(timestamp=now, value=100.0)
+def test_find_threshold_breach_uses_call_time_for_current() -> None:
+    now = datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
+    current = Measurement(timestamp=now - timedelta(minutes=5), value=105.0)
 
-    crossing = extrapolate_crossing(
-        recent_points=recent,
+    crossing = find_threshold_breach(
+        now=now,
         current=current,
-        limit_cm=110.0,
-        horizon_hours=5,
-        rising_points=3,
-        min_slope_cm_per_hour=0.1,
+        forecast_points=[],
+        limit_cm=100.0,
+        horizon_hours=72,
     )
+
     assert crossing is not None
-    assert crossing.source == "trend"
-    assert crossing.value == 110.0
+    assert crossing.source == "current"
+    assert crossing.timestamp == now
+
+
+def test_find_threshold_breach_from_forecast() -> None:
+    now = datetime.now(tz=timezone.utc)
+    current = Measurement(timestamp=now, value=90.0)
+    forecast = [
+        Measurement(timestamp=now + timedelta(hours=2), value=95.0),
+        Measurement(timestamp=now + timedelta(hours=3), value=101.0),
+    ]
+
+    crossing = find_threshold_breach(
+        now=now,
+        current=current,
+        forecast_points=forecast,
+        limit_cm=100.0,
+        horizon_hours=24,
+    )
+
+    assert crossing is not None
+    assert crossing.source == "official"
+    assert crossing.value == 101.0
 
 
 def test_should_send_alert_dedup() -> None:
@@ -105,3 +130,48 @@ def test_should_send_alert_dedup() -> None:
     assert (
         should_send_alert(settings, state, crossing, now + timedelta(hours=25)) is True
     )
+
+
+def test_build_email_includes_station_details_and_forecast_table() -> None:
+    settings = make_settings()
+    zone = ZoneInfo("UTC")
+    now = datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
+    station = StationInfo(
+        uuid="station-1",
+        number="12345",
+        shortname="TEST",
+        longname="TEST STATION",
+        km=12.3,
+        agency="WSA TEST",
+        longitude=10.1,
+        latitude=52.5,
+        water_shortname="ELBE",
+        water_longname="ELBE",
+        unit="cm",
+        timeseries=({"shortname": "W"}, {"shortname": "WV"}),
+    )
+    current = Measurement(timestamp=now, value=90.0)
+    forecast_points = [
+        Measurement(timestamp=now + timedelta(hours=1), value=95.0),
+        Measurement(timestamp=now + timedelta(hours=2), value=101.0),
+    ]
+    crossing = Crossing(
+        timestamp=now + timedelta(hours=2), value=101.0, source="official"
+    )
+
+    _, body, html_body = build_email(
+        station,
+        current,
+        forecast_points,
+        crossing,
+        settings,
+        zone,
+    )
+
+    assert "Station UUID: station-1" in body
+    assert "Timeseries: W, WV" in body
+    assert "Forecast data (fetched)" in body
+    assert "Above limit" in body
+    assert "YES" in body
+    assert "Max forecast value: 101.0 cm" in body
+    assert "<strong style='color:#b00020'>101.0 cm</strong>" in html_body

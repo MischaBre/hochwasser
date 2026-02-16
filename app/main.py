@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
+from html import escape
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -13,10 +15,10 @@ from app.notifier import send_alert_email
 from app.pegelonline import Measurement, PegelonlineClient, StationInfo
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
+_log_level_name = os.getenv("LOG_LEVEL", "DEBUG").upper()
+_log_level = getattr(logging, _log_level_name, logging.DEBUG)
+
+logging.basicConfig(level=_log_level, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("hochwasser-alert")
 
 
@@ -68,39 +70,28 @@ def find_crossing_from_forecast(
     return None
 
 
-def extrapolate_crossing(
-    recent_points: list[Measurement],
+def find_threshold_breach(
+    now: datetime,
     current: Measurement,
+    forecast_points: list[Measurement],
     limit_cm: float,
     horizon_hours: int,
-    rising_points: int,
-    min_slope_cm_per_hour: float,
 ) -> Crossing | None:
     if current.value >= limit_cm:
-        return Crossing(
-            timestamp=current.timestamp, value=current.value, source="current"
-        )
+        return Crossing(timestamp=now, value=current.value, source="current")
 
-    points = recent_points[-rising_points:]
-    if len(points) < 2:
-        return None
+    horizon = now + timedelta(hours=horizon_hours)
+    for point in forecast_points:
+        if point.timestamp < now:
+            continue
+        if point.timestamp > horizon:
+            break
+        if point.value >= limit_cm:
+            return Crossing(
+                timestamp=point.timestamp, value=point.value, source="official"
+            )
 
-    start = points[0]
-    end = points[-1]
-    delta_hours = (end.timestamp - start.timestamp).total_seconds() / 3600
-    if delta_hours <= 0:
-        return None
-
-    slope = (end.value - start.value) / delta_hours
-    if slope < min_slope_cm_per_hour:
-        return None
-
-    hours_until_limit = (limit_cm - current.value) / slope
-    if hours_until_limit < 0 or hours_until_limit > horizon_hours:
-        return None
-
-    predicted_at = current.timestamp + timedelta(hours=hours_until_limit)
-    return Crossing(timestamp=predicted_at, value=limit_cm, source="trend")
+    return None
 
 
 def should_send_alert(
@@ -139,12 +130,22 @@ def remember_sent(state: dict, now: datetime) -> None:
 def build_email(
     station: StationInfo,
     current: Measurement,
+    forecast_points: list[Measurement],
     crossing: Crossing,
     settings: Settings,
     zone: ZoneInfo,
-) -> tuple[str, str]:
+) -> tuple[str, str, str]:
     current_local = current.timestamp.astimezone(zone)
     crossing_local = crossing.timestamp.astimezone(zone)
+    max_forecast = _get_max_forecast_point(forecast_points)
+
+    max_forecast_line = "Max forecast value: -"
+    if max_forecast:
+        max_ts_local = max_forecast.timestamp.astimezone(zone)
+        max_forecast_line = (
+            f"Max forecast value: {max_forecast.value:.1f} {station.unit} "
+            f"(at {max_ts_local:%Y-%m-%d %H:%M %Z})"
+        )
 
     subject = (
         f"[Hochwasser Alert] {station.shortname}: {settings.limit_cm:.1f} {station.unit} "
@@ -152,18 +153,164 @@ def build_email(
     )
 
     body = (
-        f"Station: {station.longname} ({station.shortname})\n"
-        f"Gewaesser: {station.water_longname or station.water_shortname}\n"
-        f"Station UUID: {station.uuid}\n\n"
-        f"Grenzwert: {settings.limit_cm:.1f} {station.unit}\n"
-        f"Aktueller Wert: {current.value:.1f} {station.unit} "
-        f"(Stand {current_local:%Y-%m-%d %H:%M %Z})\n"
-        f"Prognose (Quelle: {crossing.source}): "
-        f"{crossing.value:.1f} {station.unit} am {crossing_local:%Y-%m-%d %H:%M %Z}\n\n"
-        "Hinweis: Die Trend-Prognose ist eine lineare Naeherung aus den letzten Messpunkten, "
-        "falls keine offizielle Vorhersage verfuegbar ist.\n"
+        "Station information\n"
+        "-------------------\n"
+        f"Station UUID: {station.uuid}\n"
+        f"Station number: {station.number or '-'}\n"
+        f"Short name: {station.shortname}\n"
+        f"Long name: {station.longname}\n"
+        f"Agency: {station.agency or '-'}\n"
+        f"Water body: {station.water_longname or station.water_shortname or '-'}\n"
+        f"Water shortname: {station.water_shortname or '-'}\n"
+        f"KM: {station.km if station.km is not None else '-'}\n"
+        f"Longitude: {station.longitude if station.longitude is not None else '-'}\n"
+        f"Latitude: {station.latitude if station.latitude is not None else '-'}\n"
+        f"Timeseries: {', '.join(ts.get('shortname', '?') for ts in station.timeseries if isinstance(ts, dict)) or '-'}\n\n"
+        "Alert context\n"
+        "-------------\n"
+        f"Threshold: {settings.limit_cm:.1f} {station.unit}\n"
+        f"Current value: {current.value:.1f} {station.unit} "
+        f"(at {current_local:%Y-%m-%d %H:%M %Z})\n"
+        f"Trigger source: {crossing.source}\n"
+        f"Trigger value: {crossing.value:.1f} {station.unit}\n"
+        f"Trigger time: {crossing_local:%Y-%m-%d %H:%M %Z}\n\n"
+        f"{max_forecast_line}\n\n"
+        "Forecast data (fetched)\n"
+        "-----------------------\n"
+        f"{_format_forecast_table(forecast_points, settings.limit_cm, station.unit, zone)}\n"
     )
-    return subject, body
+
+    html_body = _build_email_html(
+        station,
+        current,
+        crossing,
+        forecast_points,
+        settings,
+        zone,
+        max_forecast_line,
+    )
+    return subject, body, html_body
+
+
+def _get_max_forecast_point(forecast_points: list[Measurement]) -> Measurement | None:
+    if not forecast_points:
+        return None
+    return max(forecast_points, key=lambda p: p.value)
+
+
+def _build_email_html(
+    station: StationInfo,
+    current: Measurement,
+    crossing: Crossing,
+    forecast_points: list[Measurement],
+    settings: Settings,
+    zone: ZoneInfo,
+    max_forecast_line: str,
+) -> str:
+    current_local = current.timestamp.astimezone(zone)
+    crossing_local = crossing.timestamp.astimezone(zone)
+
+    station_timeseries = (
+        ", ".join(
+            ts.get("shortname", "?")
+            for ts in station.timeseries
+            if isinstance(ts, dict)
+        )
+        or "-"
+    )
+
+    table_html = _format_forecast_table_html(
+        forecast_points,
+        settings.limit_cm,
+        station.unit,
+        zone,
+    )
+
+    return (
+        "<html><body style='font-family:Arial,sans-serif;font-size:14px;color:#111'>"
+        "<h3>Station information</h3>"
+        f"<p>Station UUID: {escape(station.uuid)}<br>"
+        f"Station number: {escape(station.number or '-')}<br>"
+        f"Short name: {escape(station.shortname)}<br>"
+        f"Long name: {escape(station.longname)}<br>"
+        f"Agency: {escape(station.agency or '-')}<br>"
+        f"Water body: {escape(station.water_longname or station.water_shortname or '-')}<br>"
+        f"Water shortname: {escape(station.water_shortname or '-')}<br>"
+        f"KM: {station.km if station.km is not None else '-'}<br>"
+        f"Longitude: {station.longitude if station.longitude is not None else '-'}<br>"
+        f"Latitude: {station.latitude if station.latitude is not None else '-'}<br>"
+        f"Timeseries: {escape(station_timeseries)}</p>"
+        "<h3>Alert context</h3>"
+        f"<p>Threshold: {settings.limit_cm:.1f} {escape(station.unit)}<br>"
+        f"Current value: {current.value:.1f} {escape(station.unit)} "
+        f"(at {current_local:%Y-%m-%d %H:%M %Z})<br>"
+        f"Trigger source: {escape(crossing.source)}<br>"
+        f"Trigger value: {crossing.value:.1f} {escape(station.unit)}<br>"
+        f"Trigger time: {crossing_local:%Y-%m-%d %H:%M %Z}<br>"
+        f"{escape(max_forecast_line)}</p>"
+        "<h3>Forecast data (fetched)</h3>"
+        f"{table_html}"
+        "</body></html>"
+    )
+
+
+def _format_forecast_table(
+    forecast_points: list[Measurement],
+    limit_cm: float,
+    unit: str,
+    zone: ZoneInfo,
+) -> str:
+    if not forecast_points:
+        return "No forecast points returned by API."
+
+    header = f"{'Timestamp':<20} | {'Value':>10} | {'Above limit':<11}"
+    separator = "-" * len(header)
+    rows = [header, separator]
+
+    for point in forecast_points:
+        local_ts = point.timestamp.astimezone(zone)
+        is_above = "YES" if point.value >= limit_cm else "no"
+        rows.append(
+            f"{local_ts:%Y-%m-%d %H:%M} | {point.value:>7.1f} {unit:<2} | {is_above:<11}"
+        )
+
+    return "\n".join(rows)
+
+
+def _format_forecast_table_html(
+    forecast_points: list[Measurement],
+    limit_cm: float,
+    unit: str,
+    zone: ZoneInfo,
+) -> str:
+    if not forecast_points:
+        return "<p>No forecast points returned by API.</p>"
+
+    rows = []
+    for point in forecast_points:
+        local_ts = point.timestamp.astimezone(zone)
+        above = point.value >= limit_cm
+        value_html = f"{point.value:.1f} {escape(unit)}"
+        if above:
+            value_html = f"<strong style='color:#b00020'>{value_html}</strong>"
+        rows.append(
+            "<tr>"
+            f"<td style='padding:6px;border:1px solid #ddd'>{local_ts:%Y-%m-%d %H:%M}</td>"
+            f"<td style='padding:6px;border:1px solid #ddd;text-align:right'>{value_html}</td>"
+            f"<td style='padding:6px;border:1px solid #ddd'>{'YES' if above else 'no'}</td>"
+            "</tr>"
+        )
+
+    return (
+        "<table style='border-collapse:collapse'>"
+        "<thead><tr>"
+        "<th style='padding:6px;border:1px solid #ddd;text-align:left'>Timestamp</th>"
+        "<th style='padding:6px;border:1px solid #ddd;text-align:left'>Value</th>"
+        "<th style='padding:6px;border:1px solid #ddd;text-align:left'>Above limit</th>"
+        "</tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody>"
+        "</table>"
+    )
 
 
 def run_once(
@@ -174,25 +321,35 @@ def run_once(
     zone: ZoneInfo,
 ) -> None:
     now = datetime.now(tz=zone)
+    logger.info("Starting monitoring cycle at %s", now.isoformat())
+
     current = client.get_current_measurement()
-    recent = client.get_recent_measurements(start="P2D")
     official_forecast = client.get_official_forecast()
 
-    crossing = find_crossing_from_forecast(
-        official_forecast,
-        settings.limit_cm,
-        settings.forecast_horizon_hours,
+    logger.info(
+        "Fetched data: current=%s %.1f, forecast_count=%d",
+        current.timestamp.isoformat(),
+        current.value,
+        len(official_forecast),
     )
 
-    if crossing is None:
-        crossing = extrapolate_crossing(
-            recent_points=recent,
-            current=current,
-            limit_cm=settings.limit_cm,
-            horizon_hours=settings.forecast_horizon_hours,
-            rising_points=settings.rising_points,
-            min_slope_cm_per_hour=settings.min_slope_cm_per_hour,
+    crossing = find_threshold_breach(
+        now=now,
+        current=current,
+        forecast_points=official_forecast,
+        limit_cm=settings.limit_cm,
+        horizon_hours=settings.forecast_horizon_hours,
+    )
+
+    if crossing:
+        logger.info(
+            "Crossing prediction found: source=%s timestamp=%s value=%.1f",
+            crossing.source,
+            crossing.timestamp.isoformat(),
+            crossing.value,
         )
+    else:
+        logger.info("No crossing prediction found in this cycle")
 
     logger.info(
         "Current %.1f %s, limit %.1f %s, crossing=%s",
@@ -204,8 +361,15 @@ def run_once(
     )
 
     if crossing and should_send_alert(settings, state, crossing, now):
-        subject, body = build_email(station, current, crossing, settings, zone)
-        send_alert_email(settings, subject, body)
+        subject, body, html_body = build_email(
+            station,
+            current,
+            official_forecast,
+            crossing,
+            settings,
+            zone,
+        )
+        send_alert_email(settings, subject, body, html_body)
         remember_sent(state, now)
         save_state(settings.state_file, state)
         logger.info("Alert email sent to %s", ", ".join(settings.alert_recipients))
@@ -214,22 +378,29 @@ def run_once(
 def main() -> None:
     settings = load_settings()
     zone = ZoneInfo(settings.timezone)
-    client = PegelonlineClient(settings.station_uuid)
+    client = PegelonlineClient(
+        settings.station_uuid,
+        forecast_series_shortname=settings.forecast_series_shortname,
+    )
     station = client.get_station_info()
     state = load_state(settings.state_file)
 
     logger.info(
-        "Starting monitor for station %s (%s), limit %.1f %s, run hours %s",
+        "Starting monitor for station %s (%s), limit %.1f %s, run hours %s, run_every_minute=%s",
         station.longname,
         settings.station_uuid,
         settings.limit_cm,
         station.unit,
         ",".join(str(h) for h in settings.forecast_run_hours),
+        settings.run_every_minute,
     )
 
     while True:
         now = datetime.now(tz=zone)
-        next_run = _next_run_at(now, settings.forecast_run_hours)
+        if settings.run_every_minute:
+            next_run = _next_minute_run_at(now)
+        else:
+            next_run = _next_run_at(now, settings.forecast_run_hours)
         sleep_seconds = max(0.0, (next_run - now).total_seconds())
         if sleep_seconds > 0:
             logger.info("Next forecast check at %s", next_run.isoformat())
@@ -251,6 +422,10 @@ def _next_run_at(now: datetime, run_hours: tuple[int, ...]) -> datetime:
     first_hour = run_hours[0]
     tomorrow = now + timedelta(days=1)
     return tomorrow.replace(hour=first_hour, minute=0, second=0, microsecond=0)
+
+
+def _next_minute_run_at(now: datetime) -> datetime:
+    return (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
 
 
 if __name__ == "__main__":

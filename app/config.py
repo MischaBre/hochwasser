@@ -24,10 +24,10 @@ class Settings:
     provider: str
     station_uuid: str
     limit_cm: float
+    forecast_series_shortname: str
+    run_every_minute: bool
     forecast_run_hours: tuple[int, ...]
     forecast_horizon_hours: int
-    rising_points: int
-    min_slope_cm_per_hour: float
     dedupe_hours: int
     timezone: str
 
@@ -78,10 +78,12 @@ def load_settings() -> Settings:
         provider=provider,
         station_uuid=_get_required("STATION_UUID"),
         limit_cm=float(_get_required("LIMIT_CM")),
+        forecast_series_shortname=os.getenv("FORECAST_SERIES_SHORTNAME", "WV")
+        .strip()
+        .upper(),
+        run_every_minute=_get_bool("RUN_EVERY_MINUTE", False),
         forecast_run_hours=tuple(run_hours),
         forecast_horizon_hours=int(os.getenv("FORECAST_HORIZON_HOURS", "72")),
-        rising_points=int(os.getenv("RISING_POINTS", "12")),
-        min_slope_cm_per_hour=float(os.getenv("MIN_SLOPE_CM_PER_HOUR", "0.1")),
         dedupe_hours=int(os.getenv("ALERT_DEDUPE_HOURS", "24")),
         timezone=os.getenv("TZ", "Europe/Berlin"),
         smtp_host=_get_required("SMTP_HOST"),
