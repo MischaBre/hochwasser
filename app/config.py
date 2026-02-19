@@ -41,6 +41,9 @@ class Settings:
 
     alert_recipients: tuple[str, ...]
     state_file: Path
+    health_host: str
+    health_port: int
+    health_failure_threshold: int
 
 
 def load_settings() -> Settings:
@@ -95,4 +98,7 @@ def load_settings() -> Settings:
         smtp_use_ssl=_get_bool("SMTP_USE_SSL", False),
         alert_recipients=recipients,
         state_file=Path(os.getenv("STATE_FILE", "/data/state.json")),
+        health_host=os.getenv("HEALTH_HOST", "0.0.0.0"),
+        health_port=int(os.getenv("HEALTH_PORT", "8090")),
+        health_failure_threshold=int(os.getenv("HEALTH_FAILURE_THRESHOLD", "3")),
     )

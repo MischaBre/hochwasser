@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from html import escape
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -27,6 +29,87 @@ class Crossing:
     timestamp: datetime
     value: float
     source: str
+
+
+@dataclass
+class RuntimeHealth:
+    started_at: datetime
+    failure_threshold: int
+    last_success: datetime | None = None
+    last_failure: datetime | None = None
+    last_error: str | None = None
+    consecutive_failures: int = 0
+    startup_complete: bool = False
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    def mark_startup_complete(self) -> None:
+        with self._lock:
+            self.startup_complete = True
+
+    def mark_success(self, now: datetime) -> None:
+        with self._lock:
+            self.last_success = now
+            self.last_error = None
+            self.consecutive_failures = 0
+
+    def mark_failure(self, now: datetime, error: str) -> None:
+        with self._lock:
+            self.last_failure = now
+            self.last_error = error
+            self.consecutive_failures += 1
+
+    def snapshot(self) -> dict[str, object]:
+        with self._lock:
+            status = "starting"
+            if self.startup_complete:
+                status = (
+                    "ok"
+                    if self.consecutive_failures < self.failure_threshold
+                    else "degraded"
+                )
+            return {
+                "status": status,
+                "started_at": self.started_at.isoformat(),
+                "startup_complete": self.startup_complete,
+                "failure_threshold": self.failure_threshold,
+                "consecutive_failures": self.consecutive_failures,
+                "last_success": (
+                    self.last_success.isoformat() if self.last_success else None
+                ),
+                "last_failure": (
+                    self.last_failure.isoformat() if self.last_failure else None
+                ),
+                "last_error": self.last_error,
+            }
+
+
+def _start_health_server(host: str, port: int, runtime_health: RuntimeHealth) -> None:
+    class HealthHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802
+            if self.path != "/health":
+                self.send_response(404)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b"not found")
+                return
+
+            snapshot = runtime_health.snapshot()
+            is_healthy = snapshot["status"] == "ok"
+            body = json.dumps(snapshot).encode("utf-8")
+
+            self.send_response(200 if is_healthy else 503)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format: str, *args: object) -> None:
+            return
+
+    server = ThreadingHTTPServer((host, port), HealthHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    logger.info("Health endpoint listening on http://%s:%d/health", host, port)
 
 
 def load_state(path: Path) -> dict:
@@ -378,6 +461,12 @@ def run_once(
 def main() -> None:
     settings = load_settings()
     zone = ZoneInfo(settings.timezone)
+    runtime_health = RuntimeHealth(
+        started_at=datetime.now(tz=zone),
+        failure_threshold=max(1, settings.health_failure_threshold),
+    )
+    _start_health_server(settings.health_host, settings.health_port, runtime_health)
+
     client = PegelonlineClient(
         settings.station_uuid,
         forecast_series_shortname=settings.forecast_series_shortname,
@@ -394,6 +483,7 @@ def main() -> None:
         ",".join(str(h) for h in settings.forecast_run_hours),
         settings.run_every_minute,
     )
+    runtime_health.mark_startup_complete()
 
     while True:
         now = datetime.now(tz=zone)
@@ -410,6 +500,9 @@ def main() -> None:
             run_once(settings, client, station, state, zone)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Monitoring cycle failed: %s", exc)
+            runtime_health.mark_failure(now=datetime.now(tz=zone), error=str(exc))
+        else:
+            runtime_health.mark_success(now=datetime.now(tz=zone))
         time.sleep(1)
 
 

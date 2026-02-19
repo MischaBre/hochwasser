@@ -21,6 +21,8 @@ def test_load_settings_parses_run_hours_and_recipients(
 
     assert settings.forecast_run_hours == (0, 12)
     assert settings.alert_recipients == ("a@example.com", "b@example.com")
+    assert settings.health_host == "0.0.0.0"
+    assert settings.health_port == 8090
 
 
 def test_load_settings_invalid_provider(monkeypatch: pytest.MonkeyPatch) -> None:

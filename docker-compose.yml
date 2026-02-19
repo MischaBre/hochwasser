@@ -3,6 +3,18 @@ services:
     build: .
     container_name: hochwasser-alert
     restart: unless-stopped
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import json,sys,urllib.request; data=json.load(urllib.request.urlopen('http://localhost:8090/health', timeout=3)); sys.exit(0 if data.get('status') == 'ok' else 1)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
     environment:
       PROVIDER: pegelonline
       STATION_UUID: "a6ee8177-107b-47dd-bcfd-30960ccc6e9c"
@@ -26,5 +38,32 @@ services:
       SMTP_USE_SSL: "${SMTP_USE_SSL}"
 
       STATE_FILE: /data/state.json
+      HEALTH_HOST: 0.0.0.0
+      HEALTH_PORT: "8090"
+      HEALTH_FAILURE_THRESHOLD: "3"
     volumes:
       - ./data:/data
+
+  container-watchdog:
+    build: .
+    container_name: container-watchdog
+    restart: unless-stopped
+    depends_on:
+      - hochwasser-alert
+    command: ["python", "-m", "app.watchdog"]
+    environment:
+      LOG_LEVEL: INFO
+      TZ: Europe/Berlin
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: "${SMTP_PORT}"
+      SMTP_USERNAME: ${SMTP_USERNAME}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_SENDER: ${SMTP_SENDER}
+      SMTP_USE_STARTTLS: "${SMTP_USE_STARTTLS}"
+      SMTP_USE_SSL: "${SMTP_USE_SSL}"
+      ALERT_RECIPIENTS: "peter.ketges@gmx.de,gemsa.michael@gmail.com"
+      WATCHDOG_WATCH_CONTAINERS: "hochwasser-alert"
+      WATCHDOG_COOLDOWN_SECONDS: "900"
+      WATCHDOG_AUTO_RESTART_UNHEALTHY: "true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock

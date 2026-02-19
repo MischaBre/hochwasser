@@ -36,6 +36,9 @@ def make_settings() -> Settings:
         smtp_use_ssl=False,
         alert_recipients=("a@example.com",),
         state_file=Path("/tmp/state.json"),
+        health_host="0.0.0.0",
+        health_port=8090,
+        health_failure_threshold=3,
     )
 
 
