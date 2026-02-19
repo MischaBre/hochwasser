@@ -50,7 +50,8 @@ services:
     restart: unless-stopped
     depends_on:
       - hochwasser-alert
-    command: ["python", "-m", "app.watchdog"]
+    working_dir: /app
+    command: ["python", "/app/app/watchdog.py"]
     environment:
       LOG_LEVEL: INFO
       TZ: Europe/Berlin
