@@ -5,14 +5,22 @@ import logging
 import os
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from html import escape
+from dataclasses import replace
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from app.config import Settings, load_settings
+from app.config import AlertJob, Settings, load_settings
+from app.email_content import build_email
+from app.forecasting import (
+    Crossing,
+    _forecast_horizon_hours_from_station,
+    filter_future_forecast_points,
+    find_crossing_from_forecast,
+    find_threshold_breach,
+)
 from app.notifier import send_alert_email
 from app.pegelonline import Measurement, PegelonlineClient, StationInfo
 
@@ -22,13 +30,6 @@ _log_level = getattr(logging, _log_level_name, logging.DEBUG)
 
 logging.basicConfig(level=_log_level, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("hochwasser-alert")
-
-
-@dataclass(frozen=True)
-class Crossing:
-    timestamp: datetime
-    value: float
-    source: str
 
 
 @dataclass
@@ -83,6 +84,15 @@ class RuntimeHealth:
             }
 
 
+@dataclass(frozen=True)
+class StationCycleData:
+    station: StationInfo
+    current: Measurement
+    historical_points: list[Measurement]
+    future_forecast: list[Measurement]
+    horizon_hours: int
+
+
 def _start_health_server(host: str, port: int, runtime_health: RuntimeHealth) -> None:
     class HealthHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802
@@ -131,56 +141,17 @@ def save_state(path: Path, state: dict) -> None:
         json.dump(state, file, indent=2)
 
 
-def find_crossing_from_forecast(
-    points: list[Measurement], limit_cm: float, horizon_hours: int
-) -> Crossing | None:
-    if not points:
-        return None
-
-    now = datetime.now(tz=points[0].timestamp.tzinfo)
-    horizon = now + timedelta(hours=horizon_hours)
-
-    for point in points:
-        if point.timestamp < now:
-            continue
-        if point.timestamp > horizon:
-            break
-        if point.value >= limit_cm:
-            return Crossing(
-                timestamp=point.timestamp, value=point.value, source="official"
-            )
-
-    return None
-
-
-def find_threshold_breach(
-    now: datetime,
-    current: Measurement,
-    forecast_points: list[Measurement],
-    limit_cm: float,
-    horizon_hours: int,
-) -> Crossing | None:
-    if current.value >= limit_cm:
-        return Crossing(timestamp=now, value=current.value, source="current")
-
-    horizon = now + timedelta(hours=horizon_hours)
-    for point in forecast_points:
-        if point.timestamp < now:
-            continue
-        if point.timestamp > horizon:
-            break
-        if point.value >= limit_cm:
-            return Crossing(
-                timestamp=point.timestamp, value=point.value, source="official"
-            )
-
-    return None
-
-
 def should_send_alert(
-    settings: Settings, state: dict, crossing: Crossing, now: datetime
+    settings: Settings,
+    state: dict,
+    crossing: Crossing,
+    now: datetime,
 ) -> bool:
-    key = f"{settings.station_uuid}|{settings.limit_cm}|{crossing.timestamp.isoformat()}|{crossing.source}"
+    key = (
+        f"{settings.station_uuid}|{settings.limit_cm}|"
+        f"{crossing.timestamp.isoformat()}|{crossing.source}|"
+        f"{','.join(sorted(settings.alert_recipients))}"
+    )
     sent_at_raw = state["sent_keys"].get(key)
     if not sent_at_raw:
         state["_pending_key"] = key
@@ -210,218 +181,80 @@ def remember_sent(state: dict, now: datetime) -> None:
         state["sent_keys"] = dict(items[:500])
 
 
-def build_email(
-    station: StationInfo,
-    current: Measurement,
-    forecast_points: list[Measurement],
-    crossing: Crossing,
-    settings: Settings,
-    zone: ZoneInfo,
-) -> tuple[str, str, str]:
-    current_local = current.timestamp.astimezone(zone)
-    crossing_local = crossing.timestamp.astimezone(zone)
-    max_forecast = _get_max_forecast_point(forecast_points)
-
-    max_forecast_line = "Max forecast value: -"
-    if max_forecast:
-        max_ts_local = max_forecast.timestamp.astimezone(zone)
-        max_forecast_line = (
-            f"Max forecast value: {max_forecast.value:.1f} {station.unit} "
-            f"(at {max_ts_local:%Y-%m-%d %H:%M %Z})"
-        )
-
-    subject = (
-        f"[Hochwasser Alert] {station.shortname}: {settings.limit_cm:.1f} {station.unit} "
-        f"wird erreicht"
-    )
-
-    body = (
-        "Station information\n"
-        "-------------------\n"
-        f"Station UUID: {station.uuid}\n"
-        f"Station number: {station.number or '-'}\n"
-        f"Short name: {station.shortname}\n"
-        f"Long name: {station.longname}\n"
-        f"Agency: {station.agency or '-'}\n"
-        f"Water body: {station.water_longname or station.water_shortname or '-'}\n"
-        f"Water shortname: {station.water_shortname or '-'}\n"
-        f"KM: {station.km if station.km is not None else '-'}\n"
-        f"Longitude: {station.longitude if station.longitude is not None else '-'}\n"
-        f"Latitude: {station.latitude if station.latitude is not None else '-'}\n"
-        f"Timeseries: {', '.join(ts.get('shortname', '?') for ts in station.timeseries if isinstance(ts, dict)) or '-'}\n\n"
-        "Alert context\n"
-        "-------------\n"
-        f"Threshold: {settings.limit_cm:.1f} {station.unit}\n"
-        f"Current value: {current.value:.1f} {station.unit} "
-        f"(at {current_local:%Y-%m-%d %H:%M %Z})\n"
-        f"Trigger source: {crossing.source}\n"
-        f"Trigger value: {crossing.value:.1f} {station.unit}\n"
-        f"Trigger time: {crossing_local:%Y-%m-%d %H:%M %Z}\n\n"
-        f"{max_forecast_line}\n\n"
-        "Forecast data (fetched)\n"
-        "-----------------------\n"
-        f"{_format_forecast_table(forecast_points, settings.limit_cm, station.unit, zone)}\n"
-    )
-
-    html_body = _build_email_html(
-        station,
-        current,
-        crossing,
-        forecast_points,
-        settings,
-        zone,
-        max_forecast_line,
-    )
-    return subject, body, html_body
-
-
-def _get_max_forecast_point(forecast_points: list[Measurement]) -> Measurement | None:
-    if not forecast_points:
-        return None
-    return max(forecast_points, key=lambda p: p.value)
-
-
-def _build_email_html(
-    station: StationInfo,
-    current: Measurement,
-    crossing: Crossing,
-    forecast_points: list[Measurement],
-    settings: Settings,
-    zone: ZoneInfo,
-    max_forecast_line: str,
-) -> str:
-    current_local = current.timestamp.astimezone(zone)
-    crossing_local = crossing.timestamp.astimezone(zone)
-
-    station_timeseries = (
-        ", ".join(
-            ts.get("shortname", "?")
-            for ts in station.timeseries
-            if isinstance(ts, dict)
-        )
-        or "-"
-    )
-
-    table_html = _format_forecast_table_html(
-        forecast_points,
-        settings.limit_cm,
-        station.unit,
-        zone,
-    )
-
-    return (
-        "<html><body style='font-family:Arial,sans-serif;font-size:14px;color:#111'>"
-        "<h3>Station information</h3>"
-        f"<p>Station UUID: {escape(station.uuid)}<br>"
-        f"Station number: {escape(station.number or '-')}<br>"
-        f"Short name: {escape(station.shortname)}<br>"
-        f"Long name: {escape(station.longname)}<br>"
-        f"Agency: {escape(station.agency or '-')}<br>"
-        f"Water body: {escape(station.water_longname or station.water_shortname or '-')}<br>"
-        f"Water shortname: {escape(station.water_shortname or '-')}<br>"
-        f"KM: {station.km if station.km is not None else '-'}<br>"
-        f"Longitude: {station.longitude if station.longitude is not None else '-'}<br>"
-        f"Latitude: {station.latitude if station.latitude is not None else '-'}<br>"
-        f"Timeseries: {escape(station_timeseries)}</p>"
-        "<h3>Alert context</h3>"
-        f"<p>Threshold: {settings.limit_cm:.1f} {escape(station.unit)}<br>"
-        f"Current value: {current.value:.1f} {escape(station.unit)} "
-        f"(at {current_local:%Y-%m-%d %H:%M %Z})<br>"
-        f"Trigger source: {escape(crossing.source)}<br>"
-        f"Trigger value: {crossing.value:.1f} {escape(station.unit)}<br>"
-        f"Trigger time: {crossing_local:%Y-%m-%d %H:%M %Z}<br>"
-        f"{escape(max_forecast_line)}</p>"
-        "<h3>Forecast data (fetched)</h3>"
-        f"{table_html}"
-        "</body></html>"
-    )
-
-
-def _format_forecast_table(
-    forecast_points: list[Measurement],
-    limit_cm: float,
-    unit: str,
-    zone: ZoneInfo,
-) -> str:
-    if not forecast_points:
-        return "No forecast points returned by API."
-
-    header = f"{'Timestamp':<20} | {'Value':>10} | {'Above limit':<11}"
-    separator = "-" * len(header)
-    rows = [header, separator]
-
-    for point in forecast_points:
-        local_ts = point.timestamp.astimezone(zone)
-        is_above = "YES" if point.value >= limit_cm else "no"
-        rows.append(
-            f"{local_ts:%Y-%m-%d %H:%M} | {point.value:>7.1f} {unit:<2} | {is_above:<11}"
-        )
-
-    return "\n".join(rows)
-
-
-def _format_forecast_table_html(
-    forecast_points: list[Measurement],
-    limit_cm: float,
-    unit: str,
-    zone: ZoneInfo,
-) -> str:
-    if not forecast_points:
-        return "<p>No forecast points returned by API.</p>"
-
-    rows = []
-    for point in forecast_points:
-        local_ts = point.timestamp.astimezone(zone)
-        above = point.value >= limit_cm
-        value_html = f"{point.value:.1f} {escape(unit)}"
-        if above:
-            value_html = f"<strong style='color:#b00020'>{value_html}</strong>"
-        rows.append(
-            "<tr>"
-            f"<td style='padding:6px;border:1px solid #ddd'>{local_ts:%Y-%m-%d %H:%M}</td>"
-            f"<td style='padding:6px;border:1px solid #ddd;text-align:right'>{value_html}</td>"
-            f"<td style='padding:6px;border:1px solid #ddd'>{'YES' if above else 'no'}</td>"
-            "</tr>"
-        )
-
-    return (
-        "<table style='border-collapse:collapse'>"
-        "<thead><tr>"
-        "<th style='padding:6px;border:1px solid #ddd;text-align:left'>Timestamp</th>"
-        "<th style='padding:6px;border:1px solid #ddd;text-align:left'>Value</th>"
-        "<th style='padding:6px;border:1px solid #ddd;text-align:left'>Above limit</th>"
-        "</tr></thead>"
-        f"<tbody>{''.join(rows)}</tbody>"
-        "</table>"
-    )
-
-
 def run_once(
     settings: Settings,
-    client: PegelonlineClient,
-    station: StationInfo,
+    clients: dict[str, PegelonlineClient],
     state: dict,
     zone: ZoneInfo,
 ) -> None:
     now = datetime.now(tz=zone)
     logger.info("Starting monitoring cycle at %s", now.isoformat())
 
-    current = client.get_current_measurement()
-    official_forecast = client.get_official_forecast()
+    station_cache: dict[str, StationCycleData] = {}
+    failures: list[str] = []
+    for job in settings.jobs:
+        try:
+            _run_job_once(now, settings, job, clients, station_cache, state, zone)
+        except Exception as exc:  # noqa: BLE001
+            failures.append(f"{job.name}: {exc}")
+            logger.exception("Job '%s' failed: %s", job.name, exc)
 
-    logger.info(
-        "Fetched data: current=%s %.1f, forecast_count=%d",
-        current.timestamp.isoformat(),
-        current.value,
-        len(official_forecast),
+    if failures:
+        raise RuntimeError("; ".join(failures))
+
+
+def _run_job_once(
+    now: datetime,
+    settings: Settings,
+    job: AlertJob,
+    clients: dict[str, PegelonlineClient],
+    station_cache: dict[str, StationCycleData],
+    state: dict,
+    zone: ZoneInfo,
+) -> None:
+    client = clients.get(job.station_uuid)
+    if client is None:
+        client = PegelonlineClient(
+            job.station_uuid,
+            forecast_series_shortname=settings.forecast_series_shortname,
+        )
+        clients[job.station_uuid] = client
+
+    job_settings = replace(
+        settings,
+        station_uuid=job.station_uuid,
+        limit_cm=job.limit_cm,
+        alert_recipients=job.recipients,
+        locale=job.locale,
     )
+
+    station_data = station_cache.get(job.station_uuid)
+    if station_data is None:
+        station_data = _load_station_cycle_data(now, client, job_settings)
+        station_cache[job.station_uuid] = station_data
+        logger.info(
+            "Station '%s' data fetched once for this cycle",
+            job.station_uuid,
+        )
+    else:
+        logger.info(
+            "Job '%s' reusing cached data for station '%s'",
+            job.name,
+            job.station_uuid,
+        )
+
+    station = station_data.station
+    current = station_data.current
+    historical_points = station_data.historical_points
+    future_forecast = station_data.future_forecast
+    horizon_hours = station_data.horizon_hours
 
     crossing = find_threshold_breach(
         now=now,
         current=current,
-        forecast_points=official_forecast,
-        limit_cm=settings.limit_cm,
-        horizon_hours=settings.forecast_horizon_hours,
+        forecast_points=future_forecast,
+        limit_cm=job_settings.limit_cm,
+        horizon_hours=horizon_hours,
     )
 
     if crossing:
@@ -438,24 +271,79 @@ def run_once(
         "Current %.1f %s, limit %.1f %s, crossing=%s",
         current.value,
         station.unit,
-        settings.limit_cm,
+        job_settings.limit_cm,
         station.unit,
         crossing.timestamp.isoformat() if crossing else "none",
     )
 
-    if crossing and should_send_alert(settings, state, crossing, now):
+    if crossing and should_send_alert(job_settings, state, crossing, now):
         subject, body, html_body = build_email(
+            now,
             station,
             current,
-            official_forecast,
+            historical_points,
+            future_forecast,
             crossing,
-            settings,
+            job_settings,
             zone,
         )
-        send_alert_email(settings, subject, body, html_body)
+        send_alert_email(job_settings, subject, body, html_body)
         remember_sent(state, now)
-        save_state(settings.state_file, state)
-        logger.info("Alert email sent to %s", ", ".join(settings.alert_recipients))
+        save_state(job_settings.state_file, state)
+        logger.info(
+            "Job '%s' alert email sent to %s",
+            job.name,
+            ", ".join(job_settings.alert_recipients),
+        )
+
+
+def _load_station_cycle_data(
+    now: datetime,
+    client: PegelonlineClient,
+    settings: Settings,
+) -> StationCycleData:
+    station = client.get_station_info()
+    current = client.get_current_measurement()
+    recent_measurements = client.get_recent_measurements(start="PT24H")
+    historical_points = [
+        point for point in recent_measurements if point.timestamp < now
+    ]
+
+    horizon_hours = _forecast_horizon_hours_from_station(
+        now,
+        station,
+        settings.forecast_series_shortname,
+    )
+
+    official_forecast = []
+    if horizon_hours > 0:
+        official_forecast = client.get_official_forecast()
+    else:
+        logger.info(
+            "No active forecast timeseries '%s' in station metadata; evaluating current value only",
+            settings.forecast_series_shortname,
+        )
+
+    future_forecast = filter_future_forecast_points(official_forecast, now)
+
+    logger.info(
+        "Fetched station data: station=%s current=%s %.1f history_count=%d forecast_count=%d future_forecast_count=%d horizon_hours=%d",
+        settings.station_uuid,
+        current.timestamp.isoformat(),
+        current.value,
+        len(historical_points),
+        len(official_forecast),
+        len(future_forecast),
+        horizon_hours,
+    )
+
+    return StationCycleData(
+        station=station,
+        current=current,
+        historical_points=historical_points,
+        future_forecast=future_forecast,
+        horizon_hours=horizon_hours,
+    )
 
 
 def main() -> None:
@@ -467,22 +355,27 @@ def main() -> None:
     )
     _start_health_server(settings.health_host, settings.health_port, runtime_health)
 
-    client = PegelonlineClient(
-        settings.station_uuid,
-        forecast_series_shortname=settings.forecast_series_shortname,
-    )
-    station = client.get_station_info()
+    unique_stations = sorted({job.station_uuid for job in settings.jobs})
+    clients = {
+        station_uuid: PegelonlineClient(
+            station_uuid,
+            forecast_series_shortname=settings.forecast_series_shortname,
+        )
+        for station_uuid in unique_stations
+    }
     state = load_state(settings.state_file)
 
     logger.info(
-        "Starting monitor for station %s (%s), limit %.1f %s, run hours %s, run_every_minute=%s",
-        station.longname,
-        settings.station_uuid,
-        settings.limit_cm,
-        station.unit,
-        ",".join(str(h) for h in settings.forecast_run_hours),
+        "Starting monitor for %d jobs on %d station(s), run hours %s, run_every_minute=%s",
+        len(settings.jobs),
+        len(unique_stations),
+        ",".join(str(hour) for hour in settings.forecast_run_hours),
         settings.run_every_minute,
     )
+    if settings.run_every_minute:
+        logger.warning(
+            "DEBUG mode active: DEBUG_RUN_EVERY_MINUTE=true (checks every minute)"
+        )
     runtime_health.mark_startup_complete()
 
     while True:
@@ -491,13 +384,14 @@ def main() -> None:
             next_run = _next_minute_run_at(now)
         else:
             next_run = _next_run_at(now, settings.forecast_run_hours)
+
         sleep_seconds = max(0.0, (next_run - now).total_seconds())
         if sleep_seconds > 0:
             logger.info("Next forecast check at %s", next_run.isoformat())
             time.sleep(sleep_seconds)
 
         try:
-            run_once(settings, client, station, state, zone)
+            run_once(settings, clients, state, zone)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Monitoring cycle failed: %s", exc)
             runtime_health.mark_failure(now=datetime.now(tz=zone), error=str(exc))

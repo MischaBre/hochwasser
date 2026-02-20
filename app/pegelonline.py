@@ -62,13 +62,18 @@ class PegelonlineClient:
 
     def get_station_info(self) -> StationInfo:
         payload = self._get_json(
-            f"/stations/{self.station_uuid}.json?includeTimeseries=true"
+            f"/stations/{self.station_uuid}.json?includeTimeseries=true&includeForecastTimeseries=true"
         )
         unit = "cm"
         for series in payload.get("timeseries", []):
             if series.get("shortname") == "W":
                 unit = series.get("unit", "cm")
                 break
+        else:
+            for series in payload.get("timeseries", []):
+                if series.get("shortname") == self.forecast_series_shortname:
+                    unit = series.get("unit", "cm")
+                    break
 
         water = payload.get("water", {})
         return StationInfo(
@@ -145,8 +150,13 @@ class PegelonlineClient:
                 )
                 return points
         except RuntimeError as exc:
-            if "HTTP 404" not in str(exc):
-                raise
+            if "HTTP 404" in str(exc):
+                logger.info(
+                    "No official forecast available at %s (404). Using current value only.",
+                    primary_endpoint,
+                )
+                return []
+            raise
 
         endpoints = (
             f"/stations/{self.station_uuid}/W/forecast.json",

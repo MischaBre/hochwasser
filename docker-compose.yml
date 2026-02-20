@@ -17,17 +17,16 @@ services:
       start_period: 90s
     environment:
       PROVIDER: pegelonline
-      STATION_UUID: "a6ee8177-107b-47dd-bcfd-30960ccc6e9c"
-      LIMIT_CM: "600"
+      JOBS_FILE: "${JOBS_FILE:-/data/jobs.json}"
       FORECAST_SERIES_SHORTNAME: "WV"
-      RUN_EVERY_MINUTE: "true"
-      ALERT_RECIPIENTS: "peter.ketges@gmx.de,gemsa.michael@gmail.com"
+      ALERT_RECIPIENTS: ${ALERT_RECIPIENTS}
 
       FORECAST_RUN_HOURS: "0,12"
-      FORECAST_HORIZON_HOURS: "96"
+      DEBUG_RUN_EVERY_MINUTE: "${DEBUG_RUN_EVERY_MINUTE:-false}"
       ALERT_DEDUPE_HOURS: "24"
       LOG_LEVEL: DEBUG
       TZ: Europe/Berlin
+      EMAIL_LOCALE: de
 
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: "${SMTP_PORT}"
@@ -62,7 +61,8 @@ services:
       SMTP_SENDER: ${SMTP_SENDER}
       SMTP_USE_STARTTLS: "${SMTP_USE_STARTTLS}"
       SMTP_USE_SSL: "${SMTP_USE_SSL}"
-      ALERT_RECIPIENTS: "peter.ketges@gmx.de,gemsa.michael@gmail.com"
+      ALERT_RECIPIENTS: ${ALERT_RECIPIENTS}
+      WATCHDOG_ALERT_RECIPIENTS: ${WATCHDOG_ALERT_RECIPIENTS}
       WATCHDOG_WATCH_CONTAINERS: "hochwasser-alert"
       WATCHDOG_COOLDOWN_SECONDS: "900"
       WATCHDOG_AUTO_RESTART_UNHEALTHY: "true"

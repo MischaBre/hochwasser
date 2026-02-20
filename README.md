@@ -1,7 +1,7 @@
 # Hochwasser Alert Service (Raspberry Pi + Docker Compose)
 
-This service monitors a Pegelonline station and sends email alerts when a configured
-water level limit is expected to be reached.
+This service monitors one or more Pegelonline stations and sends email alerts when a
+configured water level limit is expected to be reached.
 
 It checks:
 - current water level (`currentmeasurement`)
@@ -9,7 +9,7 @@ It checks:
 
 ## Features
 
-- Configure everything via `docker-compose.yml`
+- Supports multiple alert jobs via `JOBS_FILE` JSON config
 - Alert deduplication (no repeated mail spam for the same predicted event)
 - Persistent state in `./data/state.json`
 - Runs at fixed daily times (default: 00:00 and 12:00)
@@ -22,18 +22,16 @@ It checks:
 ## Quick Start
 
 1. Copy `.env.template` to `.env` and set SMTP values.
-2. Edit non-secret values in `docker-compose.yml`:
-   - `STATION_UUID`
-   - `LIMIT_CM`
-   - `ALERT_RECIPIENTS`
-   - SMTP settings
-3. Start service:
-
+2. Copy `jobs.example.json` to your configured jobs path (default `/data/jobs.json`) and edit jobs.
+3. Edit non-secret values in `docker-compose.yml`:
+   - `FORECAST_SERIES_SHORTNAME`
+   - SMTP settings wiring
+4. Start service:
 ```bash
 docker compose up -d --build
 ```
 
-4. Follow logs:
+5. Follow logs:
 
 ```bash
 docker compose logs -f
@@ -51,16 +49,18 @@ pytest
 Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 
 - `PROVIDER`: currently only `pegelonline`
-- `STATION_UUID`: Pegelonline station UUID
-- `LIMIT_CM`: threshold to alert on (in station unit, usually cm)
+- `JOBS_FILE`: path to JSON with alert jobs (default `/data/jobs.json`)
+- Each job supports: `name`, `station_uuid`, `limit_cm`, `recipients`, `locale` (`de` or `en`)
+- Legacy fallback if `JOBS_FILE` is missing: `STATION_UUID` + `LIMIT_CM` + `ALERT_RECIPIENTS`
 - `FORECAST_SERIES_SHORTNAME`: forecast timeseries shortname (default `WV`)
-- `RUN_EVERY_MINUTE`: set `true` for test mode (run every minute)
-- `ALERT_RECIPIENTS`: comma-separated target emails
+- `DEBUG_RUN_EVERY_MINUTE`: set `true` for test mode (run every minute)
+- `ALERT_RECIPIENTS`: comma-separated fallback recipients (if `JOBS_FILE` is missing)
 - `FORECAST_RUN_HOURS`: comma-separated check hours in local time (default `0,12`)
-- `FORECAST_HORIZON_HOURS`: how far into future to alert (default `72`)
+- Forecast horizon is derived automatically from station metadata (`includeForecastTimeseries=true`, `WV.start`/`WV.end`)
 - `ALERT_DEDUPE_HOURS`: minimum hours before same predicted alert can repeat
 - `LOG_LEVEL`: `DEBUG` for verbose fetch + measurement logs (default `DEBUG`)
 - `TZ`: timezone for logs and mail timestamps
+- `EMAIL_LOCALE`: fallback localization (`de` or `en`, default `de`) used for legacy single-job mode
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`
 - `SMTP_SENDER`: From address
 - `SMTP_USE_STARTTLS`: `true`/`false`
@@ -88,6 +88,8 @@ curl -s "https://pegelonline.wsv.de/webservices/rest-api/v2/stations.json?includ
 
 Then copy the station `uuid` for your `STATION_UUID` setting.
 
+With jobs config, set that value in each job's `station_uuid` field.
+
 ## Notes About Forecasts
 
 This service first tries forecast measurements from the configured series, for example:
@@ -95,7 +97,11 @@ This service first tries forecast measurements from the configured series, for e
 `https://pegelonline.wsv.de/webservices/rest-api/v2/stations/<STATION_UUID>/WV/measurements.json`
 
 An alert is sent if either the current measurement at call time or a forecast value
-within the horizon is above the configured threshold.
+within the dynamically derived horizon is above the configured threshold.
+
+If the station does not expose forecast timeseries metadata for the configured
+forecast shortname (for example `WV` is missing), the service evaluates only the
+current measurement.
 
 ## Raspberry Pi Notes
 
@@ -121,6 +127,6 @@ Expected behavior:
 
 For quick testing, set:
 
-`RUN_EVERY_MINUTE=true`
+`DEBUG_RUN_EVERY_MINUTE=true`
 
 Then the service checks once per minute instead of only at `FORECAST_RUN_HOURS`.
