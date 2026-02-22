@@ -21,12 +21,9 @@ services:
       FORECAST_SERIES_SHORTNAME: "WV"
       ALERT_RECIPIENTS: ${ALERT_RECIPIENTS}
 
-      FORECAST_RUN_HOURS: "0,12"
-      DEBUG_RUN_EVERY_MINUTE: "${DEBUG_RUN_EVERY_MINUTE:-false}"
       ALERT_DEDUPE_HOURS: "24"
       LOG_LEVEL: DEBUG
-      TZ: Europe/Berlin
-      EMAIL_LOCALE: de
+      TZ: ${TZ}
 
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: "${SMTP_PORT}"
@@ -53,7 +50,7 @@ services:
     command: ["python", "/app/app/watchdog.py"]
     environment:
       LOG_LEVEL: INFO
-      TZ: Europe/Berlin
+      TZ: ${TZ}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: "${SMTP_PORT}"
       SMTP_USERNAME: ${SMTP_USERNAME}

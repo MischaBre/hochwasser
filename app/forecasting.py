@@ -14,30 +14,6 @@ class Crossing:
     source: str
 
 
-def find_crossing_from_forecast(
-    points: list[Measurement], limit_cm: float, horizon_hours: int
-) -> Crossing | None:
-    if not points:
-        return None
-
-    now = datetime.now(tz=points[0].timestamp.tzinfo)
-    horizon = now + timedelta(hours=horizon_hours)
-
-    for point in points:
-        if point.timestamp <= now:
-            continue
-        if point.timestamp > horizon:
-            break
-        if point.value >= limit_cm:
-            return Crossing(
-                timestamp=point.timestamp,
-                value=point.value,
-                source="official",
-            )
-
-    return None
-
-
 def find_threshold_breach(
     now: datetime,
     current: Measurement,

@@ -1,31 +1,23 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from app.config import Settings
+from app.config import AlertJob, Settings
 from app.main import (
     Crossing,
     _forecast_horizon_hours_from_station,
-    _next_minute_run_at,
-    _next_run_at,
     build_email,
     filter_future_forecast_points,
     find_threshold_breach,
-    find_crossing_from_forecast,
-    remember_sent,
-    should_send_alert,
 )
 from app.pegelonline import Measurement, StationInfo
+from app.state_store import AlertStateStore, build_dedupe_key
 from zoneinfo import ZoneInfo
 
 
 def make_settings() -> Settings:
     return Settings(
         provider="pegelonline",
-        station_uuid="station-1",
-        limit_cm=100.0,
         forecast_series_shortname="WV",
-        run_every_minute=False,
-        forecast_run_hours=(0, 12),
         dedupe_hours=24,
         timezone="Europe/Berlin",
         smtp_host="smtp.example.com",
@@ -35,53 +27,26 @@ def make_settings() -> Settings:
         smtp_sender="sender@example.com",
         smtp_use_starttls=True,
         smtp_use_ssl=False,
-        alert_recipients=("a@example.com",),
+        admin_recipients=("admin@example.com",),
         state_file=Path("/tmp/state.json"),
         health_host="0.0.0.0",
         health_port=8090,
         health_failure_threshold=3,
-        locale="en",
         jobs_file=Path("/tmp/jobs.json"),
     )
 
 
-def test_next_run_same_day() -> None:
-    now = datetime(2026, 2, 13, 10, 30, tzinfo=timezone.utc)
-    result = _next_run_at(now, (0, 12))
-    assert result == datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
-
-
-def test_next_run_next_day() -> None:
-    now = datetime(2026, 2, 13, 13, 1, tzinfo=timezone.utc)
-    result = _next_run_at(now, (0, 12))
-    assert result == datetime(2026, 2, 14, 0, 0, tzinfo=timezone.utc)
-
-
-def test_next_minute_run() -> None:
-    now = datetime(2026, 2, 13, 13, 1, 27, tzinfo=timezone.utc)
-    result = _next_minute_run_at(now)
-    assert result == datetime(2026, 2, 13, 13, 2, 0, tzinfo=timezone.utc)
-
-
-def test_find_crossing_from_forecast_within_horizon() -> None:
-    now = datetime.now(tz=timezone.utc)
-    points = [
-        Measurement(timestamp=now + timedelta(hours=1), value=95.0),
-        Measurement(timestamp=now + timedelta(hours=2), value=101.0),
-    ]
-
-    crossing = find_crossing_from_forecast(points, limit_cm=100.0, horizon_hours=3)
-    assert crossing is not None
-    assert crossing.value == 101.0
-    assert crossing.source == "official"
-
-
-def test_find_crossing_from_forecast_outside_horizon() -> None:
-    now = datetime.now(tz=timezone.utc)
-    points = [Measurement(timestamp=now + timedelta(hours=5), value=120.0)]
-
-    crossing = find_crossing_from_forecast(points, limit_cm=100.0, horizon_hours=3)
-    assert crossing is None
+def make_job(locale: str = "en", limit_cm: float = 100.0) -> AlertJob:
+    return AlertJob(
+        job_uuid="job-uuid-1",
+        name="job-1",
+        station_uuid="station-1",
+        limit_cm=limit_cm,
+        recipients=("a@example.com",),
+        alert_recipient="ops@example.com",
+        locale=locale,
+        schedule_cron="*/15 * * * *",
+    )
 
 
 def test_find_threshold_breach_uses_call_time_for_current() -> None:
@@ -203,24 +168,43 @@ def test_forecast_horizon_hours_zero_without_wv() -> None:
     assert _forecast_horizon_hours_from_station(now, station, "WV") == 0
 
 
-def test_should_send_alert_dedup() -> None:
+def test_should_send_alert_dedup(tmp_path: Path) -> None:
     settings = make_settings()
-    state = {"sent_keys": {}}
+    state_store = AlertStateStore(tmp_path / "state.json")
     now = datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
     crossing = Crossing(timestamp=now, value=100.0, source="official")
+    dedupe_key = build_dedupe_key(
+        job_uuid="job-uuid-1",
+        crossing_timestamp=crossing.timestamp,
+        alert_recipients=make_job().recipients,
+    )
 
-    assert should_send_alert(settings, state, crossing, now) is True
-    remember_sent(state, now)
-    assert (
-        should_send_alert(settings, state, crossing, now + timedelta(hours=1)) is False
+    first = state_store.run_if_due(
+        key=dedupe_key,
+        now=now,
+        dedupe_hours=settings.dedupe_hours,
+        action=lambda: None,
     )
-    assert (
-        should_send_alert(settings, state, crossing, now + timedelta(hours=25)) is True
+    second = state_store.run_if_due(
+        key=dedupe_key,
+        now=now + timedelta(hours=1),
+        dedupe_hours=settings.dedupe_hours,
+        action=lambda: None,
     )
+    third = state_store.run_if_due(
+        key=dedupe_key,
+        now=now + timedelta(hours=25),
+        dedupe_hours=settings.dedupe_hours,
+        action=lambda: None,
+    )
+
+    assert first is True
+    assert second is False
+    assert third is True
 
 
 def test_build_email_includes_station_details_and_forecast_table() -> None:
-    settings = make_settings()
+    job = make_job(locale="en", limit_cm=100.0)
     zone = ZoneInfo("UTC")
     now = datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
     station = StationInfo(
@@ -253,7 +237,8 @@ def test_build_email_includes_station_details_and_forecast_table() -> None:
         [Measurement(timestamp=now - timedelta(hours=1), value=88.0)],
         forecast_points,
         crossing,
-        settings,
+        job.limit_cm,
+        job.locale,
         zone,
     )
 
@@ -272,8 +257,7 @@ def test_build_email_includes_station_details_and_forecast_table() -> None:
 
 
 def test_build_email_localized_german() -> None:
-    settings = make_settings()
-    settings = Settings(**{**settings.__dict__, "locale": "de"})
+    job = make_job(locale="de", limit_cm=100.0)
     zone = ZoneInfo("UTC")
     now = datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
     station = StationInfo(
@@ -305,7 +289,8 @@ def test_build_email_localized_german() -> None:
         [Measurement(timestamp=now - timedelta(hours=1), value=88.0)],
         forecast_points,
         crossing,
-        settings,
+        job.limit_cm,
+        job.locale,
         zone,
     )
 

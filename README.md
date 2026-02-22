@@ -12,7 +12,7 @@ It checks:
 - Supports multiple alert jobs via `JOBS_FILE` JSON config
 - Alert deduplication (no repeated mail spam for the same predicted event)
 - Persistent state in `./data/state.json`
-- Runs at fixed daily times (default: 00:00 and 12:00)
+- Runs one APScheduler cron job per alert job
 - Alert email includes detailed station metadata and a forecast table
 - Built-in health endpoint at `/health` (default port `8090`)
 - Docker healthcheck on the alert container
@@ -50,21 +50,18 @@ Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 
 - `PROVIDER`: currently only `pegelonline`
 - `JOBS_FILE`: path to JSON with alert jobs (default `/data/jobs.json`)
-- Each job supports: `name`, `station_uuid`, `limit_cm`, `recipients`, `locale` (`de` or `en`)
-- Legacy fallback if `JOBS_FILE` is missing: `STATION_UUID` + `LIMIT_CM` + `ALERT_RECIPIENTS`
+- Each job supports: `job_uuid`, `name`, `station_uuid`, `limit_cm`, `recipients`, `alert_recipient`, `locale` (`de` or `en`), `schedule_cron`
+- `job_uuid` must be unique and stable across job reconfiguration
 - `FORECAST_SERIES_SHORTNAME`: forecast timeseries shortname (default `WV`)
-- `DEBUG_RUN_EVERY_MINUTE`: set `true` for test mode (run every minute)
-- `ALERT_RECIPIENTS`: comma-separated fallback recipients (if `JOBS_FILE` is missing)
-- `FORECAST_RUN_HOURS`: comma-separated check hours in local time (default `0,12`)
 - Forecast horizon is derived automatically from station metadata (`includeForecastTimeseries=true`, `WV.start`/`WV.end`)
 - `ALERT_DEDUPE_HOURS`: minimum hours before same predicted alert can repeat
 - `LOG_LEVEL`: `DEBUG` for verbose fetch + measurement logs (default `DEBUG`)
 - `TZ`: timezone for logs and mail timestamps
-- `EMAIL_LOCALE`: fallback localization (`de` or `en`, default `de`) used for legacy single-job mode
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`
 - `SMTP_SENDER`: From address
 - `SMTP_USE_STARTTLS`: `true`/`false`
 - `SMTP_USE_SSL`: `true`/`false`
+- `ALERT_RECIPIENTS`: admin recipients for job-down health alerts
 - `STATE_FILE`: path to persistence file (default `/data/state.json`)
 - `HEALTH_HOST`: bind host for health endpoint (default `0.0.0.0`)
 - `HEALTH_PORT`: health endpoint port (default `8090`)
@@ -75,7 +72,7 @@ Watchdog settings (from `docker-compose.yml` / `.env`):
 - `WATCHDOG_WATCH_CONTAINERS`: comma-separated container names to watch
 - `WATCHDOG_COOLDOWN_SECONDS`: suppress duplicate alerts for the same container/event
 - `WATCHDOG_AUTO_RESTART_UNHEALTHY`: restart unhealthy containers automatically
-- `WATCHDOG_ALERT_RECIPIENTS`: optional override for watchdog emails (falls back to `ALERT_RECIPIENTS`)
+- `WATCHDOG_ALERT_RECIPIENTS`: optional override for watchdog emails
 
 ## Finding a Station UUID
 
@@ -86,9 +83,7 @@ curl -s "https://pegelonline.wsv.de/webservices/rest-api/v2/stations.json?includ
 
 ```
 
-Then copy the station `uuid` for your `STATION_UUID` setting.
-
-With jobs config, set that value in each job's `station_uuid` field.
+Then copy the station `uuid` and set it in each job's `station_uuid` field.
 
 ## Notes About Forecasts
 
@@ -123,10 +118,18 @@ Expected behavior:
 - `200` with JSON `status: ok` when healthy
 - `503` with JSON `status: degraded` while repeated monitoring failures happen
 
-## Test Mode (every minute)
+## Scheduling Model
 
-For quick testing, set:
+- Main manager loop runs every minute, reloads config, and reconciles APScheduler jobs.
+- Each job is scheduled independently with its own `schedule_cron` (5-field crontab) trigger.
 
-`DEBUG_RUN_EVERY_MINUTE=true`
+## Job-Down Alerts
 
-Then the service checks once per minute instead of only at `FORECAST_RUN_HOURS`.
+- If a job reaches the configured failure threshold, the service sends one "job down" email when it transitions to degraded.
+- Recipients for this email are `ALERT_RECIPIENTS` (admin list) plus that job's `alert_recipient`.
+
+## Deduplication Key
+
+- Deduplication key format is `<job_uuid>|<sha256(...)>`.
+- Hash input is `crossing_timestamp` and sorted `alert_recipients` (stringified and hashed).
+- On job update, existing dedupe keys for that `job_uuid` are invalidated.

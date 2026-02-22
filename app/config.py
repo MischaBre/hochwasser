@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 import json
+
+
+CRON_VALIDATION_REGEX = re.compile(
+    r"^(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|(\*(\/\d+)?)|\d+) ?){5,7})$"
+)
 
 
 def _get_required(key: str) -> str:
@@ -22,21 +28,20 @@ def _get_bool(key: str, default: bool) -> bool:
 
 @dataclass(frozen=True)
 class AlertJob:
+    job_uuid: str
     name: str
     station_uuid: str
     limit_cm: float
     recipients: tuple[str, ...]
+    alert_recipient: str
     locale: str
+    schedule_cron: str
 
 
 @dataclass(frozen=True)
 class Settings:
     provider: str
-    station_uuid: str
-    limit_cm: float
     forecast_series_shortname: str
-    run_every_minute: bool
-    forecast_run_hours: tuple[int, ...]
     dedupe_hours: int
     timezone: str
 
@@ -47,13 +52,12 @@ class Settings:
     smtp_sender: str
     smtp_use_starttls: bool
     smtp_use_ssl: bool
+    admin_recipients: tuple[str, ...]
 
-    alert_recipients: tuple[str, ...]
     state_file: Path
     health_host: str
     health_port: int
     health_failure_threshold: int
-    locale: str
     jobs_file: Path
     jobs: tuple[AlertJob, ...] = field(default_factory=tuple)
 
@@ -70,6 +74,22 @@ def _parse_recipients(value: str | list[str]) -> tuple[str, ...]:
     return recipients
 
 
+def _validate_cron_expression(value: str, context: str) -> str:
+    expression = value.strip()
+    if not expression:
+        raise ValueError(f"{context} has invalid schedule_cron")
+    if CRON_VALIDATION_REGEX.fullmatch(expression) is None:
+        raise ValueError(f"{context} schedule_cron must match cron validation regex")
+    return expression
+
+
+def _parse_schedule_cron(raw_job: dict[str, object], context: str) -> str:
+    schedule_cron_raw = raw_job.get("schedule_cron")
+    if schedule_cron_raw is None:
+        raise ValueError(f"{context} missing schedule_cron")
+    return _validate_cron_expression(str(schedule_cron_raw), context)
+
+
 def _load_jobs_from_file(path: Path) -> tuple[AlertJob, ...]:
     with path.open("r", encoding="utf-8") as file:
         payload = json.load(file)
@@ -79,6 +99,7 @@ def _load_jobs_from_file(path: Path) -> tuple[AlertJob, ...]:
         raise ValueError("JOBS_FILE must contain a non-empty 'jobs' array")
 
     jobs: list[AlertJob] = []
+    seen_job_uuids: set[str] = set()
     for idx, item in enumerate(raw_jobs):
         if not isinstance(item, dict):
             raise ValueError(f"job at index {idx} must be an object")
@@ -94,35 +115,45 @@ def _load_jobs_from_file(path: Path) -> tuple[AlertJob, ...]:
         recipients_raw = item.get("recipients")
         if recipients_raw is None:
             raise ValueError(f"job at index {idx} missing recipients")
+        alert_recipient_raw = item.get("alert_recipient")
+        if alert_recipient_raw is None:
+            raise ValueError(f"job at index {idx} missing alert_recipient")
+        alert_recipient = str(alert_recipient_raw).strip()
+        if not alert_recipient:
+            raise ValueError(f"job at index {idx} has invalid alert_recipient")
+
+        job_uuid = str(item.get("job_uuid", "")).strip()
+        if not job_uuid:
+            raise ValueError(f"job at index {idx} missing job_uuid")
+        if job_uuid in seen_job_uuids:
+            raise ValueError(f"duplicate job_uuid: {job_uuid}")
+        seen_job_uuids.add(job_uuid)
 
         job_name = str(item.get("name", f"job-{idx + 1}")).strip() or f"job-{idx + 1}"
-        locale = str(item.get("locale", "de")).strip().lower()
+        locale_raw = item.get("locale")
+        if locale_raw is None:
+            raise ValueError(f"job at index {idx} missing locale")
+        locale = str(locale_raw).strip().lower()
         if locale not in {"de", "en"}:
             raise ValueError(f"job at index {idx} has invalid locale: {locale}")
+        schedule_cron = _parse_schedule_cron(
+            item,
+            context=f"job at index {idx}",
+        )
         jobs.append(
             AlertJob(
+                job_uuid=job_uuid,
                 name=job_name,
                 station_uuid=station_uuid,
                 limit_cm=float(limit_raw),
                 recipients=_parse_recipients(recipients_raw),
+                alert_recipient=alert_recipient,
                 locale=locale,
+                schedule_cron=schedule_cron,
             )
         )
 
     return tuple(jobs)
-
-
-def _load_jobs_from_legacy_env() -> tuple[AlertJob, ...]:
-    recipients = _parse_recipients(_get_required("ALERT_RECIPIENTS"))
-    return (
-        AlertJob(
-            name="default",
-            station_uuid=_get_required("STATION_UUID"),
-            limit_cm=float(_get_required("LIMIT_CM")),
-            recipients=recipients,
-            locale=os.getenv("EMAIL_LOCALE", "de").strip().lower(),
-        ),
-    )
 
 
 def load_settings() -> Settings:
@@ -133,45 +164,18 @@ def load_settings() -> Settings:
             "ELWIS support can be added later."
         )
 
-    run_hours_raw = os.getenv("FORECAST_RUN_HOURS", "0,12")
-    run_hours: list[int] = []
-    for token in run_hours_raw.split(","):
-        stripped = token.strip()
-        if not stripped:
-            continue
-        hour = int(stripped)
-        if hour < 0 or hour > 23:
-            raise ValueError("FORECAST_RUN_HOURS must contain hours between 0 and 23")
-        run_hours.append(hour)
-
-    if not run_hours:
-        raise ValueError("FORECAST_RUN_HOURS must contain at least one hour")
-
-    run_hours = sorted(set(run_hours))
-
-    locale = os.getenv("EMAIL_LOCALE", "de").strip().lower()
-    if locale not in {"de", "en"}:
-        raise ValueError("EMAIL_LOCALE must be either 'de' or 'en'")
-
     jobs_file = Path(os.getenv("JOBS_FILE", "/data/jobs.json"))
-    if jobs_file.exists():
-        jobs = _load_jobs_from_file(jobs_file)
-    else:
-        jobs = _load_jobs_from_legacy_env()
-
-    default_job = jobs[0]
+    if not jobs_file.exists():
+        raise ValueError(f"JOBS_FILE does not exist: {jobs_file}")
+    jobs = _load_jobs_from_file(jobs_file)
 
     return Settings(
         provider=provider,
-        station_uuid=default_job.station_uuid,
-        limit_cm=default_job.limit_cm,
         forecast_series_shortname=os.getenv("FORECAST_SERIES_SHORTNAME", "WV")
         .strip()
         .upper(),
-        run_every_minute=_get_bool("DEBUG_RUN_EVERY_MINUTE", False),
-        forecast_run_hours=tuple(run_hours),
         dedupe_hours=int(os.getenv("ALERT_DEDUPE_HOURS", "24")),
-        timezone=os.getenv("TZ", "Europe/Berlin"),
+        timezone=_get_required("TZ"),
         smtp_host=_get_required("SMTP_HOST"),
         smtp_port=int(os.getenv("SMTP_PORT", "587")),
         smtp_username=os.getenv("SMTP_USERNAME", ""),
@@ -179,12 +183,11 @@ def load_settings() -> Settings:
         smtp_sender=_get_required("SMTP_SENDER"),
         smtp_use_starttls=_get_bool("SMTP_USE_STARTTLS", True),
         smtp_use_ssl=_get_bool("SMTP_USE_SSL", False),
-        alert_recipients=default_job.recipients,
+        admin_recipients=_parse_recipients(_get_required("ALERT_RECIPIENTS")),
         state_file=Path(os.getenv("STATE_FILE", "/data/state.json")),
         health_host=os.getenv("HEALTH_HOST", "0.0.0.0"),
         health_port=int(os.getenv("HEALTH_PORT", "8090")),
         health_failure_threshold=int(os.getenv("HEALTH_FAILURE_THRESHOLD", "3")),
-        locale=locale,
         jobs_file=jobs_file,
         jobs=jobs,
     )
