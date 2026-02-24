@@ -40,9 +40,30 @@ docker compose logs -f
 ## Run Tests
 
 ```bash
-python -m pip install -r requirements.txt
-pytest
+uv venv
+uv sync --dev
+uv run pytest
 ```
+
+If you prefer plain `venv` + `pip`, the existing commands from `requirements.txt` still work.
+
+## Linting And Formatting
+
+Run Ruff locally:
+
+```bash
+uv run ruff check .
+uv run ruff format .
+```
+
+Install pre-commit hooks:
+
+```bash
+uv sync --dev
+uv run pre-commit install
+```
+
+Ruff checks are also enforced in GitHub Actions for pull requests into `main` and pushes to `main`.
 
 ## Configuration
 
