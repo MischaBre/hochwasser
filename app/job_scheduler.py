@@ -90,23 +90,34 @@ class JobSchedulerManager:
                 and existing.settings_signature == settings_signature
             ):
                 continue
-            if existing:
-                invalidated = self._state_store.invalidate_job_dedupe_keys(job.job_uuid)
-                self._unschedule_managed_job(existing)
-                self._runtime_health.upsert_job(job.job_uuid, job.name)
-                self._logger.info(
-                    "%s Restarting updated job, invalidated %d dedupe key(s)",
-                    _job_log_tag(job),
-                    invalidated,
+            self._runtime_health.upsert_job(job.job_uuid, job.name)
+            try:
+                if existing:
+                    invalidated = self._state_store.invalidate_job_dedupe_keys(
+                        job.job_uuid
+                    )
+                    self._unschedule_managed_job(existing)
+                    self._logger.info(
+                        "%s Restarting updated job, invalidated %d dedupe key(s)",
+                        _job_log_tag(job),
+                        invalidated,
+                    )
+                else:
+                    self._logger.info("%s Starting new job", _job_log_tag(job))
+                self._managed_jobs[job_uuid] = self._schedule_job(
+                    settings=settings,
+                    job=job,
+                    settings_signature=settings_signature,
                 )
-            else:
-                self._runtime_health.upsert_job(job.job_uuid, job.name)
-                self._logger.info("%s Starting new job", _job_log_tag(job))
-            self._managed_jobs[job_uuid] = self._schedule_job(
-                settings=settings,
-                job=job,
-                settings_signature=settings_signature,
-            )
+            except Exception as exc:  # noqa: BLE001
+                self._logger.exception(
+                    "%s Reconcile failed: %s", _job_log_tag(job), exc
+                )
+                self._runtime_health.mark_job_failure(
+                    job_uuid=job.job_uuid,
+                    now=datetime.now(tz=self._zone),
+                    error=f"reconcile failed: {exc}",
+                )
 
     @staticmethod
     def _global_settings_signature(

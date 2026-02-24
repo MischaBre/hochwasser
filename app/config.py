@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 import os
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 import json
 
-
-CRON_VALIDATION_REGEX = re.compile(
-    r"^(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|(\*(\/\d+)?)|\d+) ?){5,7})$"
-)
+from apscheduler.triggers.cron import CronTrigger
 
 
 def _get_required(key: str) -> str:
@@ -78,8 +74,12 @@ def _validate_cron_expression(value: str, context: str) -> str:
     expression = value.strip()
     if not expression:
         raise ValueError(f"{context} has invalid schedule_cron")
-    if CRON_VALIDATION_REGEX.fullmatch(expression) is None:
-        raise ValueError(f"{context} schedule_cron must match cron validation regex")
+    try:
+        CronTrigger.from_crontab(expression)
+    except ValueError as exc:
+        raise ValueError(
+            f"{context} schedule_cron must be a valid 5-field crontab expression"
+        ) from exc
     return expression
 
 

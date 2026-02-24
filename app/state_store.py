@@ -13,6 +13,7 @@ class AlertStateStore:
         self.state_file = state_file
         self._lock = threading.Lock()
         self._state = self._load_state(state_file)
+        self._inflight_keys: dict[str, threading.Event] = {}
 
     def run_if_due(
         self,
@@ -21,13 +22,39 @@ class AlertStateStore:
         dedupe_hours: int,
         action: Callable[[], None],
     ) -> bool:
-        with self._lock:
-            if not self._should_send_alert_unlocked(key, now, dedupe_hours):
-                return False
-            action()
-            self._remember_sent_unlocked(key, now)
-            self._save_state_unlocked()
-            return True
+        while True:
+            with self._lock:
+                if not self._should_send_alert_unlocked(key, now, dedupe_hours):
+                    return False
+
+                inflight = self._inflight_keys.get(key)
+                if inflight is None:
+                    inflight = threading.Event()
+                    self._inflight_keys[key] = inflight
+                    owns_inflight = True
+                else:
+                    owns_inflight = False
+
+            if not owns_inflight:
+                inflight.wait()
+                continue
+
+            try:
+                action()
+            except Exception:
+                with self._lock:
+                    self._finish_inflight_unlocked(key)
+                raise
+
+            with self._lock:
+                if not self._should_send_alert_unlocked(key, now, dedupe_hours):
+                    self._finish_inflight_unlocked(key)
+                    return False
+
+                self._remember_sent_unlocked(key, now)
+                self._save_state_unlocked()
+                self._finish_inflight_unlocked(key)
+                return True
 
     def invalidate_job_dedupe_keys(self, job_uuid: str) -> int:
         prefix = f"{job_uuid}|"
@@ -83,6 +110,11 @@ class AlertStateStore:
                 self._state["sent_keys"].items(), key=lambda kv: kv[1], reverse=True
             )
             self._state["sent_keys"] = dict(items[:500])
+
+    def _finish_inflight_unlocked(self, key: str) -> None:
+        inflight = self._inflight_keys.pop(key, None)
+        if inflight is not None:
+            inflight.set()
 
 
 def _hash_key_parts(*args: object) -> str:

@@ -244,7 +244,8 @@ def test_load_settings_rejects_invalid_job_schedule_cron(
     monkeypatch.setenv("JOBS_FILE", str(jobs_file))
 
     with pytest.raises(
-        ValueError, match="schedule_cron must match cron validation regex"
+        ValueError,
+        match="schedule_cron must be a valid 5-field crontab expression",
     ):
         load_settings()
 
