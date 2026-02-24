@@ -12,6 +12,7 @@ logger = logging.getLogger("hochwasser-alert.notifier")
 
 def send_alert_email(
     settings: Settings,
+    recipients: tuple[str, ...],
     subject: str,
     body: str,
     html_body: str | None = None,
@@ -19,7 +20,7 @@ def send_alert_email(
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = settings.smtp_sender
-    msg["To"] = ", ".join(settings.alert_recipients)
+    msg["To"] = ", ".join(recipients)
     msg.set_content(body)
     if html_body:
         msg.add_alternative(html_body, subtype="html")
@@ -28,7 +29,7 @@ def send_alert_email(
         "Sending alert email via %s:%d to %s with subject '%s'",
         settings.smtp_host,
         settings.smtp_port,
-        ", ".join(settings.alert_recipients),
+        ", ".join(recipients),
         subject,
     )
 

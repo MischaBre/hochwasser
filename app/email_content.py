@@ -4,7 +4,6 @@ from datetime import datetime
 from html import escape
 from zoneinfo import ZoneInfo
 
-from app.config import Settings
 from app.forecasting import Crossing, forecast_uncertainty_cm
 from app.i18n import format_float, tr
 from app.pegelonline import Measurement, StationInfo
@@ -18,10 +17,10 @@ def build_email(
     historical_points: list[Measurement],
     forecast_points: list[Measurement],
     crossing: Crossing,
-    settings: Settings,
+    limit_cm: float,
+    locale: str,
     zone: ZoneInfo,
 ) -> tuple[str, str, str]:
-    locale = settings.locale
     max_forecast = _get_max_forecast_point(forecast_points)
 
     max_forecast_line = f"{tr(locale, 'label_max_forecast_value')}: -"
@@ -37,7 +36,7 @@ def build_email(
         locale,
         "subject",
         station=station.shortname,
-        limit=format_float(settings.limit_cm, locale),
+        limit=format_float(limit_cm, locale),
         unit=station.unit,
     )
 
@@ -57,7 +56,7 @@ def build_email(
         f"{tr(locale, 'label_timeseries')}: {', '.join(ts.get('shortname', '?') for ts in station.timeseries if isinstance(ts, dict)) or '-'}\n\n"
         f"{tr(locale, 'section_alert_context')}\n"
         "-------------\n"
-        f"{tr(locale, 'label_threshold')}: {format_float(settings.limit_cm, locale)} {station.unit}\n"
+        f"{tr(locale, 'label_threshold')}: {format_float(limit_cm, locale)} {station.unit}\n"
         f"{tr(locale, 'label_current_value')}: {format_float(current.value, locale)} {station.unit} "
         f"({tr(locale, 'label_at')} {_format_datetime_local(current.timestamp, zone, locale)})\n"
         f"{tr(locale, 'label_trigger_source')}: {_format_source(crossing.source, locale)}\n"
@@ -66,7 +65,7 @@ def build_email(
         f"{max_forecast_line}\n\n"
         f"{tr(locale, 'section_forecast_data')}\n"
         "-----------------------\n"
-        f"{_format_forecast_table(forecast_points, now, settings.limit_cm, station.unit, zone, locale)}\n"
+        f"{_format_forecast_table(forecast_points, now, limit_cm, station.unit, zone, locale)}\n"
     )
 
     html_body = _build_email_html(
@@ -76,7 +75,8 @@ def build_email(
         crossing,
         historical_points,
         forecast_points,
-        settings,
+        limit_cm,
+        locale,
         zone,
         max_forecast_line,
     )
@@ -90,11 +90,11 @@ def _build_email_html(
     crossing: Crossing,
     historical_points: list[Measurement],
     forecast_points: list[Measurement],
-    settings: Settings,
+    limit_cm: float,
+    locale: str,
     zone: ZoneInfo,
     max_forecast_line: str,
 ) -> str:
-    locale = settings.locale
     station_timeseries = (
         ", ".join(
             ts.get("shortname", "?")
@@ -107,7 +107,7 @@ def _build_email_html(
     table_html = _format_forecast_table_html(
         forecast_points,
         now,
-        settings.limit_cm,
+        limit_cm,
         station.unit,
         zone,
         locale,
@@ -117,7 +117,7 @@ def _build_email_html(
         current,
         forecast_points,
         now,
-        settings.limit_cm,
+        limit_cm,
         station.unit,
         zone,
         locale,
@@ -138,7 +138,7 @@ def _build_email_html(
         f"{escape(tr(locale, 'label_latitude'))}: {format_float(station.latitude, locale, digits=4) if station.latitude is not None else '-'}<br>"
         f"{escape(tr(locale, 'label_timeseries'))}: {escape(station_timeseries)}</p>"
         f"<h3>{escape(tr(locale, 'section_alert_context'))}</h3>"
-        f"<p>{escape(tr(locale, 'label_threshold'))}: {format_float(settings.limit_cm, locale)} {escape(station.unit)}<br>"
+        f"<p>{escape(tr(locale, 'label_threshold'))}: {format_float(limit_cm, locale)} {escape(station.unit)}<br>"
         f"{escape(tr(locale, 'label_current_value'))}: {format_float(current.value, locale)} {escape(station.unit)} "
         f"({escape(tr(locale, 'label_at'))} {_format_datetime_local(current.timestamp, zone, locale)})<br>"
         f"{escape(tr(locale, 'label_trigger_source'))}: {escape(_format_source(crossing.source, locale))}<br>"

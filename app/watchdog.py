@@ -45,14 +45,12 @@ class WatchdogSettings:
 
 
 def load_settings() -> WatchdogSettings:
-    recipients_raw = os.getenv("WATCHDOG_ALERT_RECIPIENTS") or _required_env(
-        "ALERT_RECIPIENTS"
-    )
+    recipients_raw = _required_env("WATCHDOG_ALERT_RECIPIENTS")
     recipients = tuple(
         addr.strip() for addr in recipients_raw.split(",") if addr.strip()
     )
     if not recipients:
-        raise ValueError("WATCHDOG_ALERT_RECIPIENTS/ALERT_RECIPIENTS must not be empty")
+        raise ValueError("WATCHDOG_ALERT_RECIPIENTS must not be empty")
 
     watch_raw = os.getenv("WATCHDOG_WATCH_CONTAINERS", "")
     watch_containers = tuple(
