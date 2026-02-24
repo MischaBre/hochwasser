@@ -10,7 +10,6 @@ from zoneinfo import ZoneInfo
 from app.config import AlertJob, Settings, load_settings
 from app.email_content import build_email
 from app.forecasting import (
-    Crossing,
     _forecast_horizon_hours_from_station,
     filter_future_forecast_points,
     find_threshold_breach,
