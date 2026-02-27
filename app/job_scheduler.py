@@ -98,7 +98,7 @@ class JobSchedulerManager:
                     )
                     self._unschedule_managed_job(existing)
                     self._logger.info(
-                        "%s Restarting updated job, invalidated %d dedupe key(s)",
+                        "%s Restarting updated job, invalidated %d runtime state row(s)",
                         _job_log_tag(job),
                         invalidated,
                     )

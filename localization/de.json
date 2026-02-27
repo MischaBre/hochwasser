@@ -1,5 +1,6 @@
 {
   "subject": "[Hochwasser Alarm] {station}: {limit} {unit} erreicht",
+  "subject_state_update": "[Hochwasser Alarm] {station}: {state}",
   "section_station_information": "Stationsinformationen",
   "section_alert_context": "Alarmkontext",
   "section_forecast_data": "Vorhersagedaten (abgerufen)",
@@ -20,6 +21,9 @@
   "label_trigger_source": "Auslöser",
   "label_trigger_value": "Auslöserwert",
   "label_trigger_time": "Auslösezeit",
+  "label_alert_state": "Alarmzustand",
+  "label_predicted_crossing": "Prognose Grenzwert erreicht",
+  "label_predicted_end": "Prognose Entwarnung",
   "label_max_forecast_value": "Maximaler Vorhersagewert",
   "label_at": "um",
   "table_timestamp": "Zeitstempel",
@@ -30,10 +34,15 @@
   "value_no": "nein",
   "message_no_forecast_points": "Keine Vorhersagepunkte von der API geliefert.",
   "message_not_enough_chart_points": "Nicht genug Punkte für das Diagramm.",
+  "message_not_available": "k. A.",
   "chart_threshold": "Grenzwert {limit} {unit}",
   "chart_now": "jetzt",
   "chart_time_label": "Zeit ({timezone})",
   "chart_legend": "Blau: Wert unter Grenzwert, rot: Wert über Grenzwert, grau gestrichelt: 80%-Min/Max-Vorhersageband.",
   "trigger_source_current": "aktuell",
-  "trigger_source_official": "vorhersage"
+  "trigger_source_official": "vorhersage",
+  "state_no_crossing": "entwarnung / kein grenzwert",
+  "state_crossing_incoming": "grenzwert bevorstehend",
+  "state_crossing_active": "grenzwert erreicht",
+  "state_crossing_soon_over": "grenzwert bald unterschritten"
 }

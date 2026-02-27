@@ -9,9 +9,10 @@ It checks:
 
 ## Features
 
-- Supports multiple alert jobs via `JOBS_FILE` JSON config
+- Supports multiple alert jobs via Supabase/Postgres table `alert_jobs`
 - Alert deduplication (no repeated mail spam for the same predicted event)
-- Persistent state in `./data/state.json`
+- Persistent runtime alert state in Supabase/Postgres table `alert_job_runtime_state`
+- Durable email outbox in `email_outbox` with retry/backoff delivery
 - Runs one APScheduler cron job per alert job
 - Alert email includes detailed station metadata and a forecast table
 - Built-in health endpoint at `/health` (default port `8090`)
@@ -21,17 +22,18 @@ It checks:
 
 ## Quick Start
 
-1. Copy `.env.template` to `.env` and set SMTP values.
-2. Copy `jobs.example.json` to your configured jobs path (default `/data/jobs.json`) and edit jobs.
-3. Edit non-secret values in `docker-compose.yml`:
-   - `FORECAST_SERIES_SHORTNAME`
-   - SMTP settings wiring
-4. Start service:
+1. Copy `.env.template` to `.env` and set SMTP values plus `DATABASE_URL`.
+2. Start services:
 ```bash
 docker compose up -d --build
 ```
-
-5. Follow logs:
+3. The local Postgres dev database (`hochwasser-postgres`) is created with a persistent Docker volume.
+4. Flyway (`hochwasser-flyway`) applies SQL migrations from `sql/migrations` before the alert service starts.
+5. Insert at least one row into `public.alert_jobs`.
+6. Edit non-secret values in `docker-compose.yml`:
+   - `FORECAST_SERIES_SHORTNAME`
+   - SMTP settings wiring
+7. Follow logs:
 
 ```bash
 docker compose logs -f
@@ -70,8 +72,10 @@ Ruff checks are also enforced in GitHub Actions for pull requests into `main` an
 Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 
 - `PROVIDER`: currently only `pegelonline`
-- `JOBS_FILE`: path to JSON with alert jobs (default `/data/jobs.json`)
-- Each job supports: `job_uuid`, `name`, `station_uuid`, `limit_cm`, `recipients`, `alert_recipient`, `locale` (`de` or `en`), `schedule_cron`
+- `DATABASE_URL`: Postgres connection string (local dev default points to `postgres` service)
+- `FLYWAY_URL`: JDBC connection string for Flyway
+- `FLYWAY_USER`, `FLYWAY_PASSWORD`: DB credentials for Flyway
+- Each job supports: `job_uuid`, `name`, `station_uuid`, `limit_cm`, `recipients`, `alert_recipient`, `locale` (`de` or `en`), `schedule_cron`, `repeat_alerts_on_check` (bool, default `false`)
 - `job_uuid` must be unique and stable across job reconfiguration
 - `FORECAST_SERIES_SHORTNAME`: forecast timeseries shortname (default `WV`)
 - Forecast horizon is derived automatically from station metadata (`includeForecastTimeseries=true`, `WV.start`/`WV.end`)
@@ -83,7 +87,6 @@ Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 - `SMTP_USE_STARTTLS`: `true`/`false`
 - `SMTP_USE_SSL`: `true`/`false`
 - `ALERT_RECIPIENTS`: admin recipients for job-down health alerts
-- `STATE_FILE`: path to persistence file (default `/data/state.json`)
 - `HEALTH_HOST`: bind host for health endpoint (default `0.0.0.0`)
 - `HEALTH_PORT`: health endpoint port (default `8090`)
 - `HEALTH_FAILURE_THRESHOLD`: consecutive failed cycles before `/health` returns unhealthy (default `3`)
@@ -144,6 +147,29 @@ Expected behavior:
 - Main manager loop runs every minute, reloads config, and reconciles APScheduler jobs.
 - Each job is scheduled independently with its own `schedule_cron` (5-field crontab) trigger.
 
+## Migrating Existing Local Files
+
+If you already have `data/jobs.json` and `data/state.json`, migrate them once:
+
+```bash
+python scripts/migrate_files_to_db.py --database-url "$DATABASE_URL"
+```
+
+If your database was initialized before Flyway integration and does not have migration tracking yet, bootstrap once:
+
+```bash
+psql "$DATABASE_URL" -f sql/002_alert_state_machine.sql
+psql "$DATABASE_URL" -f sql/003_smtp_pending_notifications.sql
+psql "$DATABASE_URL" -f sql/004_email_outbox.sql
+psql "$DATABASE_URL" -f sql/005_worsening_signal_columns.sql
+```
+
+For host-side migration into the local dev database, use:
+
+```bash
+python scripts/migrate_files_to_db.py --database-url "postgresql://hochwasser:hochwasser@localhost:5432/hochwasser"
+```
+
 ## Job-Down Alerts
 
 - If a job reaches the configured failure threshold, the service sends one "job down" email when it transitions to degraded.
@@ -151,6 +177,6 @@ Expected behavior:
 
 ## Deduplication Key
 
-- Deduplication key format is `<job_uuid>|<sha256(...)>`.
-- Hash input is `crossing_timestamp` and sorted `alert_recipients` (stringified and hashed).
-- On job update, existing dedupe keys for that `job_uuid` are invalidated.
+- Alerts use per-job state transitions (`crossing_incoming`, `crossing_active`, `crossing_soon_over`, `no_crossing`).
+- Notification is queued on state transition and delivered by an outbox dispatcher loop.
+- If `repeat_alerts_on_check` is enabled for a job, repeated alerts are sent for `crossing_active` on each check.

@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from pathlib import Path
 from types import MethodType
 from zoneinfo import ZoneInfo
 
@@ -20,12 +19,14 @@ def _make_job(job_uuid: str, name: str) -> AlertJob:
         alert_recipient="ops@example.com",
         locale="en",
         schedule_cron="*/15 * * * *",
+        repeat_alerts_on_check=False,
     )
 
 
 def _make_settings(jobs: tuple[AlertJob, ...]) -> Settings:
     return Settings(
         provider="pegelonline",
+        database_url="postgresql://user:pass@localhost:5432/db",
         forecast_series_shortname="WV",
         dedupe_hours=24,
         timezone="UTC",
@@ -37,23 +38,21 @@ def _make_settings(jobs: tuple[AlertJob, ...]) -> Settings:
         smtp_use_starttls=True,
         smtp_use_ssl=False,
         admin_recipients=("admin@example.com",),
-        state_file=Path("/tmp/state.json"),
         health_host="0.0.0.0",
         health_port=8090,
         health_failure_threshold=1,
-        jobs_file=Path("/tmp/jobs.json"),
         jobs=jobs,
     )
 
 
-def test_reconcile_continues_if_one_job_schedule_fails(tmp_path: Path) -> None:
+def test_reconcile_continues_if_one_job_schedule_fails() -> None:
     zone = ZoneInfo("UTC")
     runtime_health = RuntimeHealth(
         started_at=datetime(2026, 2, 24, 10, 0, tzinfo=timezone.utc),
         failure_threshold=1,
     )
     runtime_health.mark_startup_complete()
-    state_store = AlertStateStore(tmp_path / "state.json")
+    state_store = AlertStateStore("postgresql://user:pass@localhost:5432/db")
     manager = JobSchedulerManager(
         zone=zone,
         runtime_health=runtime_health,

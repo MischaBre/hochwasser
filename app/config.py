@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
-import json
+
+import psycopg
 
 from apscheduler.triggers.cron import CronTrigger
 
@@ -32,11 +32,13 @@ class AlertJob:
     alert_recipient: str
     locale: str
     schedule_cron: str
+    repeat_alerts_on_check: bool = False
 
 
 @dataclass(frozen=True)
 class Settings:
     provider: str
+    database_url: str
     forecast_series_shortname: str
     dedupe_hours: int
     timezone: str
@@ -50,11 +52,9 @@ class Settings:
     smtp_use_ssl: bool
     admin_recipients: tuple[str, ...]
 
-    state_file: Path
     health_host: str
     health_port: int
     health_failure_threshold: int
-    jobs_file: Path
     jobs: tuple[AlertJob, ...] = field(default_factory=tuple)
 
 
@@ -83,61 +83,76 @@ def _validate_cron_expression(value: str, context: str) -> str:
     return expression
 
 
-def _parse_schedule_cron(raw_job: dict[str, object], context: str) -> str:
-    schedule_cron_raw = raw_job.get("schedule_cron")
-    if schedule_cron_raw is None:
-        raise ValueError(f"{context} missing schedule_cron")
-    return _validate_cron_expression(str(schedule_cron_raw), context)
+def _load_jobs_from_db(database_url: str) -> tuple[AlertJob, ...]:
+    query = """
+        SELECT
+            job_uuid,
+            name,
+            station_uuid,
+            limit_cm,
+            recipients,
+            alert_recipient,
+            locale,
+            schedule_cron,
+            repeat_alerts_on_check
+        FROM public.alert_jobs
+        WHERE enabled = TRUE
+        ORDER BY created_at ASC, job_uuid ASC
+    """
 
+    with psycopg.connect(database_url) as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
 
-def _load_jobs_from_file(path: Path) -> tuple[AlertJob, ...]:
-    with path.open("r", encoding="utf-8") as file:
-        payload = json.load(file)
-
-    raw_jobs = payload.get("jobs") if isinstance(payload, dict) else payload
-    if not isinstance(raw_jobs, list) or not raw_jobs:
-        raise ValueError("JOBS_FILE must contain a non-empty 'jobs' array")
+    if not rows:
+        return ()
 
     jobs: list[AlertJob] = []
     seen_job_uuids: set[str] = set()
-    for idx, item in enumerate(raw_jobs):
-        if not isinstance(item, dict):
-            raise ValueError(f"job at index {idx} must be an object")
+    for idx, row in enumerate(rows):
+        (
+            job_uuid_raw,
+            name_raw,
+            station_uuid_raw,
+            limit_raw,
+            recipients_raw,
+            alert_recipient_raw,
+            locale_raw,
+            schedule_cron_raw,
+            repeat_alerts_on_check_raw,
+        ) = row
 
-        station_uuid = str(item.get("station_uuid", "")).strip()
+        station_uuid = str(station_uuid_raw).strip()
         if not station_uuid:
             raise ValueError(f"job at index {idx} missing station_uuid")
 
-        limit_raw = item.get("limit_cm")
         if limit_raw is None:
             raise ValueError(f"job at index {idx} missing limit_cm")
 
-        recipients_raw = item.get("recipients")
         if recipients_raw is None:
             raise ValueError(f"job at index {idx} missing recipients")
-        alert_recipient_raw = item.get("alert_recipient")
         if alert_recipient_raw is None:
             raise ValueError(f"job at index {idx} missing alert_recipient")
         alert_recipient = str(alert_recipient_raw).strip()
         if not alert_recipient:
             raise ValueError(f"job at index {idx} has invalid alert_recipient")
 
-        job_uuid = str(item.get("job_uuid", "")).strip()
+        job_uuid = str(job_uuid_raw).strip()
         if not job_uuid:
             raise ValueError(f"job at index {idx} missing job_uuid")
         if job_uuid in seen_job_uuids:
             raise ValueError(f"duplicate job_uuid: {job_uuid}")
         seen_job_uuids.add(job_uuid)
 
-        job_name = str(item.get("name", f"job-{idx + 1}")).strip() or f"job-{idx + 1}"
-        locale_raw = item.get("locale")
+        job_name = str(name_raw).strip() or f"job-{idx + 1}"
         if locale_raw is None:
             raise ValueError(f"job at index {idx} missing locale")
         locale = str(locale_raw).strip().lower()
         if locale not in {"de", "en"}:
             raise ValueError(f"job at index {idx} has invalid locale: {locale}")
-        schedule_cron = _parse_schedule_cron(
-            item,
+        schedule_cron = _validate_cron_expression(
+            str(schedule_cron_raw),
             context=f"job at index {idx}",
         )
         jobs.append(
@@ -150,6 +165,7 @@ def _load_jobs_from_file(path: Path) -> tuple[AlertJob, ...]:
                 alert_recipient=alert_recipient,
                 locale=locale,
                 schedule_cron=schedule_cron,
+                repeat_alerts_on_check=bool(repeat_alerts_on_check_raw),
             )
         )
 
@@ -164,13 +180,12 @@ def load_settings() -> Settings:
             "ELWIS support can be added later."
         )
 
-    jobs_file = Path(os.getenv("JOBS_FILE", "/data/jobs.json"))
-    if not jobs_file.exists():
-        raise ValueError(f"JOBS_FILE does not exist: {jobs_file}")
-    jobs = _load_jobs_from_file(jobs_file)
+    database_url = _get_required("DATABASE_URL")
+    jobs = _load_jobs_from_db(database_url)
 
     return Settings(
         provider=provider,
+        database_url=database_url,
         forecast_series_shortname=os.getenv("FORECAST_SERIES_SHORTNAME", "WV")
         .strip()
         .upper(),
@@ -184,10 +199,8 @@ def load_settings() -> Settings:
         smtp_use_starttls=_get_bool("SMTP_USE_STARTTLS", True),
         smtp_use_ssl=_get_bool("SMTP_USE_SSL", False),
         admin_recipients=_parse_recipients(_get_required("ALERT_RECIPIENTS")),
-        state_file=Path(os.getenv("STATE_FILE", "/data/state.json")),
         health_host=os.getenv("HEALTH_HOST", "0.0.0.0"),
         health_port=int(os.getenv("HEALTH_PORT", "8090")),
         health_failure_threshold=int(os.getenv("HEALTH_FAILURE_THRESHOLD", "3")),
-        jobs_file=jobs_file,
         jobs=jobs,
     )

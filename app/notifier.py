@@ -55,3 +55,27 @@ def send_alert_email(
 def _login_if_needed(server: smtplib.SMTP, settings: Settings) -> None:
     if settings.smtp_username:
         server.login(settings.smtp_username, settings.smtp_password)
+
+
+def probe_smtp(settings: Settings, timeout_seconds: int = 8) -> tuple[bool, str | None]:
+    try:
+        if settings.smtp_use_ssl:
+            with smtplib.SMTP_SSL(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=timeout_seconds,
+            ) as server:
+                server.ehlo()
+        else:
+            with smtplib.SMTP(
+                settings.smtp_host,
+                settings.smtp_port,
+                timeout=timeout_seconds,
+            ) as server:
+                server.ehlo()
+                if settings.smtp_use_starttls:
+                    server.starttls()
+                    server.ehlo()
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)
+    return True, None

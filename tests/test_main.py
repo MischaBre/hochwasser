@@ -1,39 +1,22 @@
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
-from app.config import AlertJob, Settings
+from app.config import AlertJob
+from app.forecasting import Crossing
 from app.main import (
-    Crossing,
+    _evaluate_lifecycle,
     _forecast_horizon_hours_from_station,
     build_email,
     filter_future_forecast_points,
     find_threshold_breach,
 )
 from app.pegelonline import Measurement, StationInfo
-from app.state_store import AlertStateStore, build_dedupe_key
+from app.state_store import (
+    STATE_CROSSING_ACTIVE,
+    STATE_CROSSING_INCOMING,
+    STATE_CROSSING_SOON_OVER,
+    STATE_NO_CROSSING,
+)
 from zoneinfo import ZoneInfo
-
-
-def make_settings() -> Settings:
-    return Settings(
-        provider="pegelonline",
-        forecast_series_shortname="WV",
-        dedupe_hours=24,
-        timezone="Europe/Berlin",
-        smtp_host="smtp.example.com",
-        smtp_port=587,
-        smtp_username="",
-        smtp_password="",
-        smtp_sender="sender@example.com",
-        smtp_use_starttls=True,
-        smtp_use_ssl=False,
-        admin_recipients=("admin@example.com",),
-        state_file=Path("/tmp/state.json"),
-        health_host="0.0.0.0",
-        health_port=8090,
-        health_failure_threshold=3,
-        jobs_file=Path("/tmp/jobs.json"),
-    )
 
 
 def make_job(locale: str = "en", limit_cm: float = 100.0) -> AlertJob:
@@ -46,6 +29,7 @@ def make_job(locale: str = "en", limit_cm: float = 100.0) -> AlertJob:
         alert_recipient="ops@example.com",
         locale=locale,
         schedule_cron="*/15 * * * *",
+        repeat_alerts_on_check=False,
     )
 
 
@@ -168,39 +152,64 @@ def test_forecast_horizon_hours_zero_without_wv() -> None:
     assert _forecast_horizon_hours_from_station(now, station, "WV") == 0
 
 
-def test_should_send_alert_dedup(tmp_path: Path) -> None:
-    settings = make_settings()
-    state_store = AlertStateStore(tmp_path / "state.json")
+def test_evaluate_lifecycle_incoming() -> None:
     now = datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
-    crossing = Crossing(timestamp=now, value=100.0, source="official")
-    dedupe_key = build_dedupe_key(
-        job_uuid="job-uuid-1",
-        crossing_timestamp=crossing.timestamp,
-        alert_recipients=make_job().recipients,
-    )
+    current = Measurement(timestamp=now, value=95.0)
+    forecast = [
+        Measurement(timestamp=now + timedelta(minutes=30), value=99.0),
+        Measurement(timestamp=now + timedelta(hours=1), value=101.0),
+    ]
 
-    first = state_store.run_if_due(
-        key=dedupe_key,
+    lifecycle = _evaluate_lifecycle(
         now=now,
-        dedupe_hours=settings.dedupe_hours,
-        action=lambda: None,
-    )
-    second = state_store.run_if_due(
-        key=dedupe_key,
-        now=now + timedelta(hours=1),
-        dedupe_hours=settings.dedupe_hours,
-        action=lambda: None,
-    )
-    third = state_store.run_if_due(
-        key=dedupe_key,
-        now=now + timedelta(hours=25),
-        dedupe_hours=settings.dedupe_hours,
-        action=lambda: None,
+        current=current,
+        forecast_points=forecast,
+        limit_cm=100.0,
+        horizon_hours=24,
     )
 
-    assert first is True
-    assert second is False
-    assert third is True
+    assert lifecycle.state == STATE_CROSSING_INCOMING
+    assert lifecycle.predicted_crossing_at == forecast[1].timestamp
+
+
+def test_evaluate_lifecycle_active_and_soon_over() -> None:
+    now = datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
+    current = Measurement(timestamp=now, value=105.0)
+    forecast = [Measurement(timestamp=now + timedelta(hours=2), value=99.0)]
+
+    lifecycle = _evaluate_lifecycle(
+        now=now,
+        current=current,
+        forecast_points=forecast,
+        limit_cm=100.0,
+        horizon_hours=24,
+    )
+    assert lifecycle.state == STATE_CROSSING_SOON_OVER
+    assert lifecycle.predicted_end_at == forecast[0].timestamp
+
+    lifecycle_no_end = _evaluate_lifecycle(
+        now=now,
+        current=current,
+        forecast_points=[],
+        limit_cm=100.0,
+        horizon_hours=24,
+    )
+    assert lifecycle_no_end.state == STATE_CROSSING_ACTIVE
+
+
+def test_evaluate_lifecycle_no_crossing() -> None:
+    now = datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
+    current = Measurement(timestamp=now, value=95.0)
+
+    lifecycle = _evaluate_lifecycle(
+        now=now,
+        current=current,
+        forecast_points=[],
+        limit_cm=100.0,
+        horizon_hours=24,
+    )
+
+    assert lifecycle.state == STATE_NO_CROSSING
 
 
 def test_build_email_includes_station_details_and_forecast_table() -> None:

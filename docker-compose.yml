@@ -1,4 +1,39 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: hochwasser-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hochwasser
+      POSTGRES_USER: hochwasser
+      POSTGRES_PASSWORD: hochwasser
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hochwasser -d hochwasser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  flyway:
+    image: flyway/flyway:10
+    container_name: hochwasser-flyway
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["migrate"]
+    environment:
+      FLYWAY_URL: "${FLYWAY_URL:-jdbc:postgresql://postgres:5432/hochwasser}"
+      FLYWAY_USER: "${FLYWAY_USER:-hochwasser}"
+      FLYWAY_PASSWORD: "${FLYWAY_PASSWORD:-hochwasser}"
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      FLYWAY_CONNECT_RETRIES: "30"
+    volumes:
+      - ./sql/migrations:/flyway/sql:ro
+
   hochwasser-alert:
     build: .
     container_name: hochwasser-alert
@@ -15,9 +50,12 @@ services:
       timeout: 5s
       retries: 3
       start_period: 90s
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
     environment:
       PROVIDER: pegelonline
-      JOBS_FILE: "${JOBS_FILE:-/data/jobs.json}"
+      DATABASE_URL: "${DATABASE_URL:-postgresql://hochwasser:hochwasser@postgres:5432/hochwasser}"
       FORECAST_SERIES_SHORTNAME: "WV"
       ALERT_RECIPIENTS: ${ALERT_RECIPIENTS}
 
@@ -33,12 +71,9 @@ services:
       SMTP_USE_STARTTLS: "${SMTP_USE_STARTTLS}"
       SMTP_USE_SSL: "${SMTP_USE_SSL}"
 
-      STATE_FILE: /data/state.json
       HEALTH_HOST: 0.0.0.0
       HEALTH_PORT: "8090"
       HEALTH_FAILURE_THRESHOLD: "3"
-    volumes:
-      - ./data:/data
 
   container-watchdog:
     build: .
@@ -65,3 +100,6 @@ services:
       WATCHDOG_AUTO_RESTART_UNHEALTHY: "true"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  postgres_data:
