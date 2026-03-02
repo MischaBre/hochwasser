@@ -12,11 +12,13 @@ This directory contains schema SQL for the alert service.
 - `003_smtp_pending_notifications.sql`: adds pending-notification columns for SMTP outage handling.
 - `004_email_outbox.sql`: creates durable email outbox table and indexes.
 - `005_worsening_signal_columns.sql`: adds worsening-signal columns for runtime/outbox notifications.
+- `006_outbox_sending_recovery.sql`: adds recovery metadata for stale outbox messages stuck in `sending`.
 - `migrations/V1__supabase_schema.sql`: Flyway baseline migration.
 - `migrations/V2__alert_state_machine.sql`: Flyway additive migration.
 - `migrations/V3__smtp_pending_notifications.sql`: Flyway migration for pending notification columns.
 - `migrations/V4__email_outbox.sql`: Flyway migration for durable outbox delivery.
 - `migrations/V5__worsening_signal_columns.sql`: Flyway migration for worsening-signal notification fields.
+- `migrations/V6__outbox_sending_recovery.sql`: Flyway migration for reclaiming stale `sending` outbox rows.
 
 ## Startup Flow (Docker Compose)
 

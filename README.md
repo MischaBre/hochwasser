@@ -163,6 +163,7 @@ psql "$DATABASE_URL" -f sql/002_alert_state_machine.sql
 psql "$DATABASE_URL" -f sql/003_smtp_pending_notifications.sql
 psql "$DATABASE_URL" -f sql/004_email_outbox.sql
 psql "$DATABASE_URL" -f sql/005_worsening_signal_columns.sql
+psql "$DATABASE_URL" -f sql/006_outbox_sending_recovery.sql
 ```
 
 For host-side migration into the local dev database, use:

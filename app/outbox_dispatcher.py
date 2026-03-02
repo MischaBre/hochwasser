@@ -9,6 +9,9 @@ from app.config import Settings
 from app.notifier import probe_smtp, send_alert_email
 
 
+STALE_SENDING_TIMEOUT = timedelta(minutes=15)
+
+
 @dataclass(frozen=True)
 class DispatchCycleResult:
     smtp_available: bool
@@ -42,8 +45,10 @@ def run_outbox_dispatch_cycle(
     now: datetime,
     batch_size: int = 50,
     max_attempts: int = 10,
+    stale_sending_timeout: timedelta = STALE_SENDING_TIMEOUT,
 ) -> DispatchCycleResult:
-    queued_due = _count_due_outbox(database_url, now)
+    stale_sending_before = now - stale_sending_timeout
+    queued_due = _count_due_outbox(database_url, now, stale_sending_before)
     smtp_available, smtp_error = probe_smtp(settings)
     if not smtp_available:
         return DispatchCycleResult(
@@ -54,7 +59,12 @@ def run_outbox_dispatch_cycle(
             failed=0,
         )
 
-    messages = _claim_outbox_messages(database_url, now, batch_size)
+    messages = _claim_outbox_messages(
+        database_url,
+        now,
+        batch_size,
+        stale_sending_before,
+    )
     sent = 0
     failed = 0
     for message in messages:
@@ -83,17 +93,27 @@ def run_outbox_dispatch_cycle(
     )
 
 
-def _count_due_outbox(database_url: str, now: datetime) -> int:
+def _count_due_outbox(
+    database_url: str,
+    now: datetime,
+    stale_sending_before: datetime,
+) -> int:
     with psycopg.connect(database_url) as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT count(*)
                 FROM public.email_outbox
-                WHERE status IN ('queued', 'failed')
-                  AND next_attempt_at <= %s
+                WHERE (
+                    status IN ('queued', 'failed')
+                    AND next_attempt_at <= %s
+                )
+                OR (
+                    status = 'sending'
+                    AND sending_started_at <= %s
+                )
                 """,
-                (now,),
+                (now, stale_sending_before),
             )
             row = cur.fetchone()
             return int(row[0]) if row else 0
@@ -103,6 +123,7 @@ def _claim_outbox_messages(
     database_url: str,
     now: datetime,
     batch_size: int,
+    stale_sending_before: datetime,
 ) -> list[_OutboxMessage]:
     with psycopg.connect(database_url) as conn:
         with conn.transaction():
@@ -112,14 +133,20 @@ def _claim_outbox_messages(
                     WITH candidates AS (
                         SELECT id
                         FROM public.email_outbox
-                        WHERE status IN ('queued', 'failed')
-                          AND next_attempt_at <= %s
+                        WHERE (
+                            status IN ('queued', 'failed')
+                            AND next_attempt_at <= %s
+                        )
+                        OR (
+                            status = 'sending'
+                            AND sending_started_at <= %s
+                        )
                         ORDER BY created_at ASC
                         FOR UPDATE SKIP LOCKED
                         LIMIT %s
                     )
                     UPDATE public.email_outbox AS o
-                    SET status = 'sending', updated_at = %s
+                    SET status = 'sending', sending_started_at = %s, updated_at = %s
                     FROM candidates
                     WHERE o.id = candidates.id
                     RETURNING
@@ -138,7 +165,7 @@ def _claim_outbox_messages(
                         o.body_html,
                         o.attempt_count
                     """,
-                    (now, batch_size, now),
+                    (now, stale_sending_before, batch_size, now, now),
                 )
                 rows = cur.fetchall()
 
@@ -172,7 +199,7 @@ def _mark_outbox_sent(
                 cur.execute(
                     """
                     UPDATE public.email_outbox
-                    SET status = 'sent', sent_at = %s, updated_at = %s
+                    SET status = 'sent', sent_at = %s, sending_started_at = NULL, updated_at = %s
                     WHERE id = %s
                     """,
                     (now, now, message.id),
@@ -222,6 +249,7 @@ def _mark_outbox_failed(
                 SET status = %s,
                     attempt_count = %s,
                     next_attempt_at = %s,
+                    sending_started_at = NULL,
                     last_error = %s,
                     updated_at = %s
                 WHERE id = %s
