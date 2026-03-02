@@ -3,31 +3,19 @@ from __future__ import annotations
 import logging
 import os
 import time
-from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from app.config import AlertJob, Settings, load_settings
-from app.email_content import build_email
-from app.forecasting import (
-    Crossing,
-    _forecast_horizon_hours_from_station,
-    filter_future_forecast_points,
-    find_threshold_breach,
-)
+from app.email_content import build_notification_payload
+from app.forecasting import evaluate_lifecycle
 from app.job_scheduler import JobSchedulerManager
 from app.outbox_dispatcher import run_outbox_dispatch_cycle
-from app.pegelonline import Measurement, PegelonlineClient, StationInfo
+from app.pegelonline import PegelonlineClient
 from app.runtime_health import RuntimeHealth, start_health_server
-from app.state_store import (
-    AlertStateStore,
-    STATE_CROSSING_ACTIVE,
-    STATE_CROSSING_INCOMING,
-    STATE_CROSSING_SOON_OVER,
-    STATE_NO_CROSSING,
-)
+from app.state_store import AlertStateStore
 from app.station_data_cache import StationDataCache
-from app.i18n import format_float, tr
+from app.station_cycle_data import StationCycleData, load_station_cycle_data
 
 
 _log_level_name = os.getenv("LOG_LEVEL", "DEBUG").upper()
@@ -40,25 +28,6 @@ MAIN_LOG_TAG = "[job=main]"
 
 def _job_log_tag(job: AlertJob) -> str:
     return f"[job={job.job_uuid}:{job.name}]"
-
-
-@dataclass(frozen=True)
-class StationCycleData:
-    station: StationInfo
-    current: Measurement
-    historical_points: list[Measurement]
-    future_forecast: list[Measurement]
-    horizon_hours: int
-
-
-@dataclass(frozen=True)
-class LifecycleEvaluation:
-    state: str
-    crossing: Crossing | None
-    predicted_crossing_at: datetime | None
-    predicted_end_at: datetime | None
-    predicted_peak_cm: float | None
-    predicted_peak_at: datetime | None
 
 
 def _run_job_once(
@@ -75,7 +44,7 @@ def _run_job_once(
         station_uuid=job.station_uuid,
         forecast_series_shortname=settings.forecast_series_shortname,
         requester=_job_log_tag(job),
-        fetcher=lambda: _load_station_cycle_data(now, client, settings, job),
+        fetcher=lambda: load_station_cycle_data(now, client, settings, job),
     )
 
     station = station_data.station
@@ -84,7 +53,7 @@ def _run_job_once(
     future_forecast = station_data.future_forecast
     horizon_hours = station_data.horizon_hours
 
-    evaluation = _evaluate_lifecycle(
+    evaluation = evaluate_lifecycle(
         now=now,
         current=current,
         forecast_points=future_forecast,
@@ -117,7 +86,7 @@ def _run_job_once(
         else "none",
     )
 
-    subject, body, html_body = _build_notification_payload(
+    subject, body, html_body = build_notification_payload(
         now=now,
         station=station,
         current=current,
@@ -153,180 +122,6 @@ def _run_job_once(
             evaluation.state,
             result.transitioned,
         )
-
-
-def _load_station_cycle_data(
-    now: datetime,
-    client: PegelonlineClient,
-    settings: Settings,
-    job: AlertJob,
-) -> StationCycleData:
-    station = client.get_station_info()
-    current = client.get_current_measurement()
-    recent_measurements = client.get_recent_measurements(start="PT24H")
-    historical_points = [
-        point for point in recent_measurements if point.timestamp < now
-    ]
-
-    horizon_hours = _forecast_horizon_hours_from_station(
-        now,
-        station,
-        settings.forecast_series_shortname,
-    )
-
-    official_forecast = []
-    if horizon_hours > 0:
-        official_forecast = client.get_official_forecast()
-    else:
-        logger.info(
-            "%s No active forecast timeseries '%s' in station metadata; evaluating current value only",
-            _job_log_tag(job),
-            settings.forecast_series_shortname,
-        )
-
-    future_forecast = filter_future_forecast_points(official_forecast, now)
-
-    logger.info(
-        "%s Fetched station data: station=%s current=%s %.1f history_count=%d forecast_count=%d future_forecast_count=%d horizon_hours=%d",
-        _job_log_tag(job),
-        job.station_uuid,
-        current.timestamp.isoformat(),
-        current.value,
-        len(historical_points),
-        len(official_forecast),
-        len(future_forecast),
-        horizon_hours,
-    )
-
-    return StationCycleData(
-        station=station,
-        current=current,
-        historical_points=historical_points,
-        future_forecast=future_forecast,
-        horizon_hours=horizon_hours,
-    )
-
-
-def _evaluate_lifecycle(
-    now: datetime,
-    current: Measurement,
-    forecast_points: list[Measurement],
-    limit_cm: float,
-    horizon_hours: int,
-) -> LifecycleEvaluation:
-    crossing = find_threshold_breach(
-        now=now,
-        current=current,
-        forecast_points=forecast_points,
-        limit_cm=limit_cm,
-        horizon_hours=horizon_hours,
-    )
-    sorted_forecast = sorted(forecast_points, key=lambda item: item.timestamp)
-
-    if current.value >= limit_cm:
-        peak_value = current.value
-        peak_at = now
-        for point in sorted_forecast:
-            if point.value > peak_value:
-                peak_value = point.value
-                peak_at = point.timestamp
-        predicted_end_at = next(
-            (point.timestamp for point in sorted_forecast if point.value < limit_cm),
-            None,
-        )
-        return LifecycleEvaluation(
-            state=(
-                STATE_CROSSING_SOON_OVER
-                if predicted_end_at is not None
-                else STATE_CROSSING_ACTIVE
-            ),
-            crossing=Crossing(timestamp=now, value=current.value, source="current"),
-            predicted_crossing_at=now,
-            predicted_end_at=predicted_end_at,
-            predicted_peak_cm=peak_value,
-            predicted_peak_at=peak_at,
-        )
-
-    if crossing is not None:
-        peak_point = max(sorted_forecast, key=lambda p: p.value, default=None)
-        return LifecycleEvaluation(
-            state=STATE_CROSSING_INCOMING,
-            crossing=crossing,
-            predicted_crossing_at=crossing.timestamp,
-            predicted_end_at=None,
-            predicted_peak_cm=peak_point.value if peak_point else None,
-            predicted_peak_at=peak_point.timestamp if peak_point else None,
-        )
-
-    return LifecycleEvaluation(
-        state=STATE_NO_CROSSING,
-        crossing=None,
-        predicted_crossing_at=None,
-        predicted_end_at=None,
-        predicted_peak_cm=None,
-        predicted_peak_at=None,
-    )
-
-
-def _build_notification_payload(
-    now: datetime,
-    station: StationInfo,
-    current: Measurement,
-    historical_points: list[Measurement],
-    future_forecast: list[Measurement],
-    job: AlertJob,
-    state: str,
-    crossing: Crossing | None,
-    predicted_crossing_at: datetime | None,
-    predicted_end_at: datetime | None,
-    zone: ZoneInfo,
-) -> tuple[str, str, str | None]:
-    subject = tr(
-        job.locale,
-        "subject_state_update",
-        station=station.shortname,
-        state=tr(job.locale, f"state_{state}"),
-        limit=format_float(job.limit_cm, job.locale),
-        unit=station.unit,
-    )
-
-    if crossing is not None:
-        _, body, html_body = build_email(
-            now,
-            station,
-            current,
-            historical_points,
-            future_forecast,
-            crossing,
-            job.limit_cm,
-            job.locale,
-            zone,
-        )
-        body = (
-            f"{tr(job.locale, 'label_alert_state')}: {tr(job.locale, f'state_{state}')}.\n"
-            f"{body}"
-        )
-        return subject, body, html_body
-
-    crossing_time = (
-        predicted_crossing_at.astimezone(zone).isoformat()
-        if predicted_crossing_at is not None
-        else tr(job.locale, "message_not_available")
-    )
-    end_time = (
-        predicted_end_at.astimezone(zone).isoformat()
-        if predicted_end_at is not None
-        else tr(job.locale, "message_not_available")
-    )
-    body = (
-        f"{tr(job.locale, 'label_alert_state')}: {tr(job.locale, f'state_{state}')}\n"
-        f"{tr(job.locale, 'label_station_uuid')}: {station.uuid}\n"
-        f"{tr(job.locale, 'label_current_value')}: {format_float(current.value, job.locale)} {station.unit}\n"
-        f"{tr(job.locale, 'label_threshold')}: {format_float(job.limit_cm, job.locale)} {station.unit}\n"
-        f"{tr(job.locale, 'label_predicted_crossing')}: {crossing_time}\n"
-        f"{tr(job.locale, 'label_predicted_end')}: {end_time}\n"
-    )
-    return subject, body, None
 
 
 def main() -> None:

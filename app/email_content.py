@@ -4,6 +4,7 @@ from datetime import datetime
 from html import escape
 from zoneinfo import ZoneInfo
 
+from app.config import AlertJob
 from app.forecasting import Crossing, forecast_uncertainty_cm
 from app.i18n import format_float, tr
 from app.pegelonline import Measurement, StationInfo
@@ -275,3 +276,64 @@ def _format_source(source: str, locale: str) -> str:
     if source == "official":
         return tr(locale, "trigger_source_official")
     return source
+
+
+def build_notification_payload(
+    now: datetime,
+    station: StationInfo,
+    current: Measurement,
+    historical_points: list[Measurement],
+    future_forecast: list[Measurement],
+    job: AlertJob,
+    state: str,
+    crossing: Crossing | None,
+    predicted_crossing_at: datetime | None,
+    predicted_end_at: datetime | None,
+    zone: ZoneInfo,
+) -> tuple[str, str, str | None]:
+    subject = tr(
+        job.locale,
+        "subject_state_update",
+        station=station.shortname,
+        state=tr(job.locale, f"state_{state}"),
+        limit=format_float(job.limit_cm, job.locale),
+        unit=station.unit,
+    )
+
+    if crossing is not None:
+        _, body, html_body = build_email(
+            now,
+            station,
+            current,
+            historical_points,
+            future_forecast,
+            crossing,
+            job.limit_cm,
+            job.locale,
+            zone,
+        )
+        body = (
+            f"{tr(job.locale, 'label_alert_state')}: {tr(job.locale, f'state_{state}')}.\n"
+            f"{body}"
+        )
+        return subject, body, html_body
+
+    crossing_time = (
+        predicted_crossing_at.astimezone(zone).isoformat()
+        if predicted_crossing_at is not None
+        else tr(job.locale, "message_not_available")
+    )
+    end_time = (
+        predicted_end_at.astimezone(zone).isoformat()
+        if predicted_end_at is not None
+        else tr(job.locale, "message_not_available")
+    )
+    body = (
+        f"{tr(job.locale, 'label_alert_state')}: {tr(job.locale, f'state_{state}')}\n"
+        f"{tr(job.locale, 'label_station_uuid')}: {station.uuid}\n"
+        f"{tr(job.locale, 'label_current_value')}: {format_float(current.value, job.locale)} {station.unit}\n"
+        f"{tr(job.locale, 'label_threshold')}: {format_float(job.limit_cm, job.locale)} {station.unit}\n"
+        f"{tr(job.locale, 'label_predicted_crossing')}: {crossing_time}\n"
+        f"{tr(job.locale, 'label_predicted_end')}: {end_time}\n"
+    )
+    return subject, body, None

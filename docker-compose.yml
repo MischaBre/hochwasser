@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:16
     container_name: hochwasser-postgres
+    profiles:
+      - local-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: hochwasser
@@ -24,6 +26,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+        required: false
     command: ["migrate"]
     environment:
       FLYWAY_URL: "${FLYWAY_URL:-jdbc:postgresql://postgres:5432/hochwasser}"

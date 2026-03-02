@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from app.config import AlertJob
-from app.forecasting import Crossing
-from app.main import (
-    _evaluate_lifecycle,
-    _forecast_horizon_hours_from_station,
-    build_email,
+from app.email_content import build_email
+from app.forecasting import (
+    Crossing,
+    forecast_horizon_hours_from_station,
+    evaluate_lifecycle,
     filter_future_forecast_points,
     find_threshold_breach,
 )
@@ -16,7 +17,6 @@ from app.state_store import (
     STATE_CROSSING_SOON_OVER,
     STATE_NO_CROSSING,
 )
-from zoneinfo import ZoneInfo
 
 
 def make_job(locale: str = "en", limit_cm: float = 100.0) -> AlertJob:
@@ -106,7 +106,7 @@ def test_filter_future_forecast_points() -> None:
     assert filtered == [forecast[2]]
 
 
-def test_forecast_horizon_hours_from_station_metadata() -> None:
+def test_forecast_horizon_hours_from_metadata() -> None:
     now = datetime(2026, 2, 20, 7, 0, tzinfo=timezone.utc)
     station = StationInfo(
         uuid="station-1",
@@ -129,10 +129,10 @@ def test_forecast_horizon_hours_from_station_metadata() -> None:
         ),
     )
 
-    assert _forecast_horizon_hours_from_station(now, station, "WV") == 96
+    assert forecast_horizon_hours_from_station(now, station, "WV") == 96
 
 
-def test_forecast_horizon_hours_zero_without_wv() -> None:
+def test_forecast_horizon_hours_zero_when_series_missing() -> None:
     now = datetime(2026, 2, 20, 7, 0, tzinfo=timezone.utc)
     station = StationInfo(
         uuid="station-1",
@@ -149,7 +149,7 @@ def test_forecast_horizon_hours_zero_without_wv() -> None:
         timeseries=(),
     )
 
-    assert _forecast_horizon_hours_from_station(now, station, "WV") == 0
+    assert forecast_horizon_hours_from_station(now, station, "WV") == 0
 
 
 def test_evaluate_lifecycle_incoming() -> None:
@@ -160,7 +160,7 @@ def test_evaluate_lifecycle_incoming() -> None:
         Measurement(timestamp=now + timedelta(hours=1), value=101.0),
     ]
 
-    lifecycle = _evaluate_lifecycle(
+    lifecycle = evaluate_lifecycle(
         now=now,
         current=current,
         forecast_points=forecast,
@@ -177,7 +177,7 @@ def test_evaluate_lifecycle_active_and_soon_over() -> None:
     current = Measurement(timestamp=now, value=105.0)
     forecast = [Measurement(timestamp=now + timedelta(hours=2), value=99.0)]
 
-    lifecycle = _evaluate_lifecycle(
+    lifecycle = evaluate_lifecycle(
         now=now,
         current=current,
         forecast_points=forecast,
@@ -187,7 +187,7 @@ def test_evaluate_lifecycle_active_and_soon_over() -> None:
     assert lifecycle.state == STATE_CROSSING_SOON_OVER
     assert lifecycle.predicted_end_at == forecast[0].timestamp
 
-    lifecycle_no_end = _evaluate_lifecycle(
+    lifecycle_no_end = evaluate_lifecycle(
         now=now,
         current=current,
         forecast_points=[],
@@ -201,7 +201,7 @@ def test_evaluate_lifecycle_no_crossing() -> None:
     now = datetime(2026, 2, 13, 12, 0, tzinfo=timezone.utc)
     current = Measurement(timestamp=now, value=95.0)
 
-    lifecycle = _evaluate_lifecycle(
+    lifecycle = evaluate_lifecycle(
         now=now,
         current=current,
         forecast_points=[],

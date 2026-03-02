@@ -27,7 +27,7 @@ It checks:
 ```bash
 docker compose up -d --build
 ```
-3. The local Postgres dev database (`hochwasser-postgres`) is created with a persistent Docker volume.
+3. The local Postgres dev database (`hochwasser-postgres`) is created with a persistent Docker volume when `COMPOSE_PROFILES=local-db` is set.
 4. Flyway (`hochwasser-flyway`) applies SQL migrations from `sql/migrations` before the alert service starts.
 5. Insert at least one row into `public.alert_jobs`.
 6. Edit non-secret values in `docker-compose.yml`:
@@ -72,6 +72,7 @@ Ruff checks are also enforced in GitHub Actions for pull requests into `main` an
 Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 
 - `PROVIDER`: currently only `pegelonline`
+- `COMPOSE_PROFILES`: set to `local-db` to start the local Postgres container; unset/empty in production
 - `DATABASE_URL`: Postgres connection string (local dev default points to `postgres` service)
 - `FLYWAY_URL`: JDBC connection string for Flyway
 - `FLYWAY_USER`, `FLYWAY_PASSWORD`: DB credentials for Flyway
