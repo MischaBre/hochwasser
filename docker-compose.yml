@@ -63,7 +63,7 @@ services:
       ALERT_RECIPIENTS: ${ALERT_RECIPIENTS}
 
       ALERT_DEDUPE_HOURS: "24"
-      LOG_LEVEL: DEBUG
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       TZ: ${TZ}
 
       SMTP_HOST: ${SMTP_HOST}
@@ -87,7 +87,7 @@ services:
     working_dir: /app
     command: ["python", "/app/app/watchdog.py"]
     environment:
-      LOG_LEVEL: INFO
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       TZ: ${TZ}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: "${SMTP_PORT}"

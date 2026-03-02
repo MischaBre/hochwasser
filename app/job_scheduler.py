@@ -32,7 +32,8 @@ def _job_log_tag(job: AlertJob) -> str:
 class ManagedScheduledJob:
     job: AlertJob
     scheduler_job_id: str
-    settings_signature: tuple[tuple[str, object], ...]
+    runtime_signature: tuple[tuple[str, object], ...]
+    dedupe_signature: tuple[tuple[str, object], ...]
 
 
 class JobSchedulerManager:
@@ -70,7 +71,7 @@ class JobSchedulerManager:
 
     def reconcile(self, settings: Settings) -> None:
         desired_jobs = {job.job_uuid: job for job in settings.jobs}
-        settings_signature = self._global_settings_signature(settings)
+        runtime_signature = self._runtime_settings_signature(settings)
 
         removed_names = sorted(set(self._managed_jobs) - set(desired_jobs))
         for job_uuid in removed_names:
@@ -84,30 +85,41 @@ class JobSchedulerManager:
 
         for job_uuid, job in desired_jobs.items():
             existing = self._managed_jobs.get(job_uuid)
+            dedupe_signature = self._dedupe_signature(settings, job)
             if (
                 existing
                 and existing.job == job
-                and existing.settings_signature == settings_signature
+                and existing.runtime_signature == runtime_signature
             ):
                 continue
             self._runtime_health.upsert_job(job.job_uuid, job.name)
             try:
                 if existing:
-                    invalidated = self._state_store.invalidate_job_dedupe_keys(
-                        job.job_uuid
-                    )
+                    should_invalidate = existing.dedupe_signature != dedupe_signature
+                    invalidated = 0
+                    if should_invalidate:
+                        invalidated = self._state_store.invalidate_job_dedupe_keys(
+                            job.job_uuid
+                        )
                     self._unschedule_managed_job(existing)
-                    self._logger.info(
-                        "%s Restarting updated job, invalidated %d runtime state row(s)",
-                        _job_log_tag(job),
-                        invalidated,
-                    )
+                    if should_invalidate:
+                        self._logger.info(
+                            "%s Restarting updated job, invalidated %d runtime state row(s)",
+                            _job_log_tag(job),
+                            invalidated,
+                        )
+                    else:
+                        self._logger.info(
+                            "%s Restarting updated job without dedupe reset",
+                            _job_log_tag(job),
+                        )
                 else:
                     self._logger.info("%s Starting new job", _job_log_tag(job))
                 self._managed_jobs[job_uuid] = self._schedule_job(
                     settings=settings,
                     job=job,
-                    settings_signature=settings_signature,
+                    runtime_signature=runtime_signature,
+                    dedupe_signature=dedupe_signature,
                 )
             except Exception as exc:  # noqa: BLE001
                 self._logger.exception(
@@ -120,7 +132,7 @@ class JobSchedulerManager:
                 )
 
     @staticmethod
-    def _global_settings_signature(
+    def _runtime_settings_signature(
         settings: Settings,
     ) -> tuple[tuple[str, object], ...]:
         excluded_keys = {"jobs"}
@@ -130,11 +142,25 @@ class JobSchedulerManager:
             if key not in excluded_keys
         )
 
+    @staticmethod
+    def _dedupe_signature(
+        settings: Settings,
+        job: AlertJob,
+    ) -> tuple[tuple[str, object], ...]:
+        return (
+            ("station_uuid", job.station_uuid),
+            ("limit_cm", job.limit_cm),
+            ("locale", job.locale),
+            ("repeat_alerts_on_check", job.repeat_alerts_on_check),
+            ("forecast_series_shortname", settings.forecast_series_shortname),
+        )
+
     def _schedule_job(
         self,
         settings: Settings,
         job: AlertJob,
-        settings_signature: tuple[tuple[str, object], ...],
+        runtime_signature: tuple[tuple[str, object], ...],
+        dedupe_signature: tuple[tuple[str, object], ...],
     ) -> ManagedScheduledJob:
         scheduler_job_id = f"job-{job.job_uuid}"
         client = PegelonlineClient(
@@ -146,7 +172,6 @@ class JobSchedulerManager:
             trigger=CronTrigger.from_crontab(job.schedule_cron, timezone=self._zone),
             id=scheduler_job_id,
             replace_existing=True,
-            next_run_time=datetime.now(tz=self._zone),
             max_instances=1,
             kwargs={
                 "settings": settings,
@@ -162,7 +187,8 @@ class JobSchedulerManager:
         return ManagedScheduledJob(
             job=job,
             scheduler_job_id=scheduler_job_id,
-            settings_signature=settings_signature,
+            runtime_signature=runtime_signature,
+            dedupe_signature=dedupe_signature,
         )
 
     def _unschedule_managed_job(self, managed: ManagedScheduledJob) -> None:
