@@ -24,7 +24,7 @@ This directory contains schema SQL for the alert service.
 
 `docker compose up` starts services in this order:
 
-1. `postgres` (persistent volume, only when `COMPOSE_PROFILES=local-db`)
+1. `postgres` (persistent volume, only when `COMPOSE_PROFILES=dev`)
 2. `flyway` (`migrate` command against `sql/migrations`)
 3. `hochwasser-alert` (only after Flyway exits successfully)
 

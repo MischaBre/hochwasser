@@ -19,6 +19,7 @@ It checks:
 - Docker healthcheck on the alert container
 - Watchdog container that alerts on container `die` / `unhealthy` events
 - Optional auto-restart of unhealthy containers via watchdog
+- Alert container runs as non-root with read-only filesystem defaults
 
 ## Quick Start
 
@@ -27,7 +28,9 @@ It checks:
 ```bash
 docker compose up -d --build
 ```
-3. The local Postgres dev database (`hochwasser-postgres`) is created with a persistent Docker volume when `COMPOSE_PROFILES=local-db` is set.
+3. Profiles:
+   - `COMPOSE_PROFILES=dev`: starts local Postgres, no watchdog
+   - `COMPOSE_PROFILES=prod`: starts watchdog, no local Postgres
 4. Flyway (`hochwasser-flyway`) applies SQL migrations from `sql/migrations` before the alert service starts.
 5. Insert at least one row into `public.alert_jobs`.
 6. Edit non-secret values in `docker-compose.yml`:
@@ -65,14 +68,14 @@ uv sync --dev
 uv run pre-commit install
 ```
 
-Ruff checks are also enforced in GitHub Actions for pull requests into `main` and pushes to `main`.
+Ruff checks and pytest are enforced in GitHub Actions for pull requests into `main` and pushes to `main`.
 
 ## Configuration
 
 Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 
 - `PROVIDER`: currently only `pegelonline`
-- `COMPOSE_PROFILES`: set to `local-db` to start the local Postgres container; unset/empty in production
+- `COMPOSE_PROFILES`: use `dev` for local Postgres (no watchdog) or `prod` for watchdog with external DB
 - `DATABASE_URL`: Postgres connection string (local dev default points to `postgres` service)
 - `FLYWAY_URL`: JDBC connection string for Flyway
 - `FLYWAY_USER`, `FLYWAY_PASSWORD`: DB credentials for Flyway
@@ -81,7 +84,7 @@ Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 - `FORECAST_SERIES_SHORTNAME`: forecast timeseries shortname (default `WV`)
 - Forecast horizon is derived automatically from station metadata (`includeForecastTimeseries=true`, `WV.start`/`WV.end`)
 - `ALERT_DEDUPE_HOURS`: minimum hours before same predicted alert can repeat
-- `LOG_LEVEL`: `DEBUG` for verbose fetch + measurement logs (default `DEBUG`)
+- `LOG_LEVEL`: log level for alert service/watchdog (default `INFO`)
 - `TZ`: timezone for logs and mail timestamps
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`
 - `SMTP_SENDER`: From address
@@ -98,6 +101,11 @@ Watchdog settings (from `docker-compose.yml` / `.env`):
 - `WATCHDOG_COOLDOWN_SECONDS`: suppress duplicate alerts for the same container/event
 - `WATCHDOG_AUTO_RESTART_UNHEALTHY`: restart unhealthy containers automatically
 - `WATCHDOG_ALERT_RECIPIENTS`: optional override for watchdog emails
+
+Watchdog security note:
+
+- `container-watchdog` mounts `/var/run/docker.sock` and therefore has host-level control over Docker.
+- Keep it in the `prod` profile only, and run only on trusted hosts.
 
 ## Finding a Station UUID
 
