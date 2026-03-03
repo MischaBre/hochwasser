@@ -1,0 +1,149 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: hochwasser-alert-service\n"
+"POT-Creation-Date: 2026-03-03 00:00+0000\n"
+"PO-Revision-Date: 2026-03-03 00:00+0000\n"
+"Last-Translator: OpenCode\n"
+"Language: en\n"
+"Language-Team: English\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "subject"
+msgstr "[Flood Alert] {station}: {limit} {unit} reached"
+
+msgid "subject_state_update"
+msgstr "[Flood Alert] {station}: {state}"
+
+msgid "section_station_information"
+msgstr "Station information"
+
+msgid "section_alert_context"
+msgstr "Alert context"
+
+msgid "section_forecast_data"
+msgstr "Forecast data"
+
+msgid "section_hydrograph"
+msgstr "Hydrograph"
+
+msgid "label_station_uuid"
+msgstr "Station UUID"
+
+msgid "label_station_number"
+msgstr "Station number"
+
+msgid "label_short_name"
+msgstr "Short name"
+
+msgid "label_long_name"
+msgstr "Long name"
+
+msgid "label_agency"
+msgstr "Agency"
+
+msgid "label_water_body"
+msgstr "Water body"
+
+msgid "label_water_shortname"
+msgstr "Water shortname"
+
+msgid "label_km"
+msgstr "KM"
+
+msgid "label_longitude"
+msgstr "Longitude"
+
+msgid "label_latitude"
+msgstr "Latitude"
+
+msgid "label_timeseries"
+msgstr "Timeseries"
+
+msgid "label_threshold"
+msgstr "Threshold"
+
+msgid "label_current_value"
+msgstr "Current value"
+
+msgid "label_trigger_source"
+msgstr "Trigger source"
+
+msgid "label_trigger_value"
+msgstr "Trigger value"
+
+msgid "label_trigger_time"
+msgstr "Trigger time"
+
+msgid "label_alert_state"
+msgstr "Alert state"
+
+msgid "label_predicted_crossing"
+msgstr "Predicted crossing"
+
+msgid "label_predicted_end"
+msgstr "Predicted end"
+
+msgid "label_max_forecast_value"
+msgstr "Max forecast value"
+
+msgid "label_at"
+msgstr "at"
+
+msgid "table_timestamp"
+msgstr "Timestamp"
+
+msgid "table_value"
+msgstr "Value"
+
+msgid "table_above_limit"
+msgstr "Above limit"
+
+msgid "table_confidence"
+msgstr "80% conf."
+
+msgid "value_yes"
+msgstr "YES"
+
+msgid "value_no"
+msgstr "no"
+
+msgid "message_no_forecast_points"
+msgstr "No forecast points returned by API."
+
+msgid "message_not_enough_chart_points"
+msgstr "Not enough points to draw chart."
+
+msgid "message_not_available"
+msgstr "n/a"
+
+msgid "chart_threshold"
+msgstr "threshold {limit} {unit}"
+
+msgid "chart_now"
+msgstr "now"
+
+msgid "chart_time_label"
+msgstr "time ({timezone})"
+
+msgid "chart_legend"
+msgstr "Blue: value below threshold, red: value above threshold, gray dashed: 80% min/max forecast band."
+
+msgid "trigger_source_current"
+msgstr "current"
+
+msgid "trigger_source_official"
+msgstr "official"
+
+msgid "state_no_crossing"
+msgstr "crossing over / no crossing"
+
+msgid "state_crossing_incoming"
+msgstr "crossing incoming"
+
+msgid "state_crossing_active"
+msgstr "crossing reached"
+
+msgid "state_crossing_soon_over"
+msgstr "crossing soon over"

@@ -1,0 +1,56 @@
+<html><body style='font-family:Arial,sans-serif;font-size:14px;color:#111'>
+<h3>{{ _('section_station_information') }}</h3>
+<p>{{ _('label_station_number') }}: {{ station_number }}<br>
+{{ _('label_long_name') }}: {{ station_longname }}<br>
+{{ _('label_agency') }}: {{ station_agency }}<br>
+{{ _('label_water_body') }}: {{ station_water_body }}<br>
+{{ _('label_km') }}: {{ station_km }}<br>
+{{ _('label_longitude') }}: {{ station_longitude }}<br>
+{{ _('label_latitude') }}: {{ station_latitude }}</p>
+<h3>{{ _('section_alert_context') }}</h3>
+<p>{{ _('label_threshold') }}: {{ limit_formatted }} {{ station_unit }}<br>
+{{ _('label_current_value') }}: {{ current_value_formatted }} {{ station_unit }} ({{ _('label_at') }} {{ current_timestamp_local }})<br>
+{{ _('label_trigger_source') }}: {{ trigger_source }}<br>
+{{ _('label_trigger_value') }}: {{ trigger_value_formatted }} {{ station_unit }}<br>
+{{ _('label_trigger_time') }}: {{ trigger_time_local }}<br>
+{% if max_forecast_value_with_unit and max_forecast_time_local %}
+{{ _('label_max_forecast_value') }}: {{ max_forecast_value_with_unit }} ({{ _('label_at') }} {{ max_forecast_time_local }})
+{% else %}
+{{ _('label_max_forecast_value') }}: -
+{% endif %}
+</p>
+<h3>{{ _('section_hydrograph') }}</h3>
+{% if chart_image_data_uri %}
+<div>
+<img alt='{{ chart_alt }}' style='max-width:100%;height:auto;border:1px solid #ddd' src='{{ chart_image_data_uri }}'/>
+{% if chart_legend %}
+<p style='margin:6px 0 0;color:#555;font-size:12px'>{{ chart_legend }}</p>
+{% endif %}
+</div>
+{% elif chart_message %}
+<p>{{ chart_message }}</p>
+{% endif %}
+<h3>{{ _('section_forecast_data') }}</h3>
+{% if not forecast_rows %}
+<p>{{ message_no_forecast_points }}</p>
+{% else %}
+<table style='border-collapse:collapse'>
+<thead><tr>
+<th style='padding:6px;border:1px solid #ddd;text-align:left'>{{ table_timestamp_label }}</th>
+<th style='padding:6px;border:1px solid #ddd;text-align:left'>{{ table_value_label }}</th>
+<th style='padding:6px;border:1px solid #ddd;text-align:left'>{{ table_above_limit_label }}</th>
+<th style='padding:6px;border:1px solid #ddd;text-align:left'>{{ table_confidence_label }}</th>
+</tr></thead>
+<tbody>
+{% for row in forecast_rows %}
+<tr>
+<td style='padding:6px;border:1px solid #ddd'>{{ row.timestamp_local }}</td>
+<td style='padding:6px;border:1px solid #ddd;text-align:right'>{% if row.above_limit %}<strong style='color:#b00020'>{{ row.value_with_unit }}</strong>{% else %}{{ row.value_with_unit }}{% endif %}</td>
+<td style='padding:6px;border:1px solid #ddd'>{{ row.above_limit_label }}</td>
+<td style='padding:6px;border:1px solid #ddd'>{{ row.confidence }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+</body></html>

@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 from base64 import b64encode
 from datetime import datetime, timedelta
-from html import escape
 from io import BytesIO
 from zoneinfo import ZoneInfo
 
@@ -13,13 +12,14 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter, MultipleLocator
 
 from app.forecasting import forecast_uncertainty_cm
-from app.i18n import format_float, tr
+from app.locale_utils import format_float
 from app.pegelonline import Measurement
+from app.translator import translate
 
 matplotlib.use("Agg")
 
 
-def build_forecast_chart_html(
+def build_forecast_chart_payload(
     historical_points: list[Measurement],
     current: Measurement,
     forecast_points: list[Measurement],
@@ -28,18 +28,28 @@ def build_forecast_chart_html(
     unit: str,
     zone: ZoneInfo,
     locale: str,
-) -> str:
+) -> dict[str, str | None]:
     series = sorted(
         [*historical_points, current, *forecast_points],
         key=lambda point: point.timestamp,
     )
     if len(series) < 2:
-        return f"<p>{escape(tr(locale, 'message_not_enough_chart_points'))}</p>"
+        return {
+            "image_data_uri": None,
+            "alt": translate(locale, "section_hydrograph"),
+            "legend": None,
+            "message": translate(locale, "message_not_enough_chart_points"),
+        }
 
     start_ts = series[0].timestamp
     end_ts = series[-1].timestamp
     if end_ts <= start_ts:
-        return f"<p>{escape(tr(locale, 'message_not_enough_chart_points'))}</p>"
+        return {
+            "image_data_uri": None,
+            "alt": translate(locale, "section_hydrograph"),
+            "legend": None,
+            "message": translate(locale, "message_not_enough_chart_points"),
+        }
 
     values = [point.value for point in series]
     values.append(limit_cm)
@@ -187,7 +197,7 @@ def build_forecast_chart_html(
         ax.text(
             reference_time,
             max_value,
-            tr(locale, "chart_now"),
+            translate(locale, "chart_now"),
             color="#1976d2",
             fontsize=9,
             va="bottom",
@@ -220,7 +230,12 @@ def build_forecast_chart_html(
     ax.text(
         0.01,
         0.98,
-        tr(locale, "chart_threshold", limit=format_float(limit_cm, locale), unit=unit),
+        translate(
+            locale,
+            "chart_threshold",
+            limit=format_float(limit_cm, locale),
+            unit=unit,
+        ),
         transform=ax.transAxes,
         color="#b00020",
         fontsize=9,
@@ -228,7 +243,7 @@ def build_forecast_chart_html(
         ha="left",
     )
     ax.set_xlabel(
-        tr(locale, "chart_time_label", timezone=zone.key),
+        translate(locale, "chart_time_label", timezone=zone.key),
         fontsize=9,
         color="#555",
     )
@@ -239,16 +254,12 @@ def build_forecast_chart_html(
     plt.close(fig)
 
     encoded = b64encode(png_buffer.getvalue()).decode("ascii")
-    return (
-        "<div>"
-        f"<img alt='{escape(tr(locale, 'section_hydrograph'))}' "
-        "style='max-width:100%;height:auto;border:1px solid #ddd' "
-        f"src='data:image/png;base64,{encoded}'/>"
-        "<p style='margin:6px 0 0;color:#555;font-size:12px'>"
-        f"{escape(tr(locale, 'chart_legend'))}"
-        "</p>"
-        "</div>"
-    )
+    return {
+        "image_data_uri": f"data:image/png;base64,{encoded}",
+        "alt": translate(locale, "section_hydrograph"),
+        "legend": translate(locale, "chart_legend"),
+        "message": None,
+    }
 
 
 def _format_x_tick_label(timestamp: datetime, zone: ZoneInfo, locale: str) -> str:

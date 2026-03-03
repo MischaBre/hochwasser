@@ -11,7 +11,8 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY app /app/app
-COPY localization /app/localization
+COPY templates /app/templates
+COPY locales /app/locales
 
 RUN groupadd --system app && useradd --system --gid app --home-dir /app app && chown -R app:app /app
 

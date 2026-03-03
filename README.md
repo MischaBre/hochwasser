@@ -15,6 +15,7 @@ It checks:
 - Durable email outbox in `email_outbox` with retry/backoff delivery
 - Runs one APScheduler cron job per alert job
 - Alert email includes detailed station metadata and a forecast table
+- Notification emails are rendered from Jinja templates in `templates/email/`
 - Built-in health endpoint at `/health` (default port `8090`)
 - Docker healthcheck on the alert container
 - Watchdog container that alerts on container `die` / `unhealthy` events
@@ -50,6 +51,13 @@ uv sync --dev
 uv run pytest
 ```
 
+Or use Make targets:
+
+```bash
+make test
+make check
+```
+
 If you prefer plain `venv` + `pip`, the existing commands from `requirements.txt` still work.
 
 ## Linting And Formatting
@@ -69,6 +77,16 @@ uv run pre-commit install
 ```
 
 Ruff checks and pytest are enforced in GitHub Actions for pull requests into `main` and pushes to `main`.
+
+## Production Readiness Checks
+
+Use the Makefile to run repeatable production readiness checks:
+
+```bash
+make prod-ready
+```
+
+This runs linting, format checks, tests, gettext catalog freshness checks, and docker compose config validation.
 
 ## Configuration
 
@@ -94,6 +112,14 @@ Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 - `HEALTH_HOST`: bind host for health endpoint (default `0.0.0.0`)
 - `HEALTH_PORT`: health endpoint port (default `8090`)
 - `HEALTH_FAILURE_THRESHOLD`: consecutive failed cycles before `/health` returns unhealthy (default `3`)
+
+Email templates:
+
+- Alert templates live in `templates/email/alert_*.j2`
+- State update templates live in `templates/email/state_update_*.j2`
+- Templates use Jinja's i18n extension with translation keys (for example `{{ _('label_station_uuid') }}`)
+- GNU gettext catalogs are in `locales/<lang>/LC_MESSAGES/emails.po` and compiled to `emails.mo`
+- Recompile catalogs after edits with `msgfmt -o locales/<lang>/LC_MESSAGES/emails.mo locales/<lang>/LC_MESSAGES/emails.po`
 
 Watchdog settings (from `docker-compose.yml` / `.env`):
 
@@ -164,15 +190,7 @@ If you already have `data/jobs.json` and `data/state.json`, migrate them once:
 python scripts/migrate_files_to_db.py --database-url "$DATABASE_URL"
 ```
 
-If your database was initialized before Flyway integration and does not have migration tracking yet, bootstrap once:
-
-```bash
-psql "$DATABASE_URL" -f sql/002_alert_state_machine.sql
-psql "$DATABASE_URL" -f sql/003_smtp_pending_notifications.sql
-psql "$DATABASE_URL" -f sql/004_email_outbox.sql
-psql "$DATABASE_URL" -f sql/005_worsening_signal_columns.sql
-psql "$DATABASE_URL" -f sql/006_outbox_sending_recovery.sql
-```
+If your database was initialized before Flyway integration and does not have migration tracking yet, bootstrap migration tracking and then run Flyway against `sql/migrations`.
 
 For host-side migration into the local dev database, use:
 

@@ -3,16 +3,9 @@
 This directory contains schema SQL for the alert service.
 
 - `sql/migrations/` is the Flyway source of truth used at container startup.
-- `001_supabase_schema.sql` and `002_alert_state_machine.sql` remain available for manual `psql` execution.
 
 ## Files
 
-- `001_supabase_schema.sql`: baseline schema for a fresh database.
-- `002_alert_state_machine.sql`: additive migration for existing databases that were created before the alert state-machine update.
-- `003_smtp_pending_notifications.sql`: adds pending-notification columns for SMTP outage handling.
-- `004_email_outbox.sql`: creates durable email outbox table and indexes.
-- `005_worsening_signal_columns.sql`: adds worsening-signal columns for runtime/outbox notifications.
-- `006_outbox_sending_recovery.sql`: adds recovery metadata for stale outbox messages stuck in `sending`.
 - `migrations/V1__supabase_schema.sql`: Flyway baseline migration.
 - `migrations/V2__alert_state_machine.sql`: Flyway additive migration.
 - `migrations/V3__smtp_pending_notifications.sql`: Flyway migration for pending notification columns.
@@ -32,10 +25,15 @@ Flyway keeps migration history in `flyway_schema_history`.
 
 ## Manual Setup (Optional)
 
-For a new local or Supabase Postgres database without Docker startup orchestration, apply:
+For a new local or Supabase Postgres database without Docker startup orchestration, run Flyway migrations from `sql/migrations`.
 
 ```bash
-psql "$DATABASE_URL" -f sql/001_supabase_schema.sql
+flyway \
+  -url="$FLYWAY_URL" \
+  -user="$FLYWAY_USER" \
+  -password="$FLYWAY_PASSWORD" \
+  -locations=filesystem:sql/migrations \
+  migrate
 ```
 
 This creates:
@@ -46,14 +44,7 @@ This creates:
 
 ## Upgrading An Existing Database
 
-If your DB was initialized earlier and does not yet have the state-machine columns/table,
-apply:
-
-```bash
-psql "$DATABASE_URL" -f sql/002_alert_state_machine.sql
-```
-
-`002_alert_state_machine.sql` is safe to run multiple times (`IF NOT EXISTS`).
+For existing databases, keep using Flyway as the only migration path. If your database predates Flyway tracking, initialize `flyway_schema_history` once and then run the same `migrate` command above.
 
 ## Data Migration From Local JSON Files
 

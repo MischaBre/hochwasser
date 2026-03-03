@@ -1,0 +1,31 @@
+name: i18n
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  gettext:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install gettext
+        run: sudo apt-get update && sudo apt-get install -y gettext
+
+      - name: Validate PO compiles
+        run: |
+          set -euo pipefail
+          msgfmt -o /tmp/emails.en.mo locales/en/LC_MESSAGES/emails.po
+          msgfmt -o /tmp/emails.de.mo locales/de/LC_MESSAGES/emails.po
+
+      - name: Ensure committed MO files are up to date
+        run: |
+          set -euo pipefail
+          cmp --silent /tmp/emails.en.mo locales/en/LC_MESSAGES/emails.mo || (echo "en emails.mo is stale. Rebuild with msgfmt." && exit 1)
+          cmp --silent /tmp/emails.de.mo locales/de/LC_MESSAGES/emails.mo || (echo "de emails.mo is stale. Rebuild with msgfmt." && exit 1)

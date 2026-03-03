@@ -1,0 +1,35 @@
+{{ _('section_station_information') }}
+-------------------
+{{ _('label_station_number') }}: {{ station_number }}
+{{ _('label_long_name') }}: {{ station_longname }}
+{{ _('label_agency') }}: {{ station_agency }}
+{{ _('label_water_body') }}: {{ station_water_body }}
+{{ _('label_km') }}: {{ station_km }}
+{{ _('label_longitude') }}: {{ station_longitude }}
+{{ _('label_latitude') }}: {{ station_latitude }}
+
+{{ _('section_alert_context') }}
+-------------
+{{ _('label_threshold') }}: {{ limit_formatted }} {{ station_unit }}
+{{ _('label_current_value') }}: {{ current_value_formatted }} {{ station_unit }} ({{ _('label_at') }} {{ current_timestamp_local }})
+{{ _('label_trigger_source') }}: {{ trigger_source }}
+{{ _('label_trigger_value') }}: {{ trigger_value_formatted }} {{ station_unit }}
+{{ _('label_trigger_time') }}: {{ trigger_time_local }}
+
+{% if max_forecast_value_with_unit and max_forecast_time_local %}
+{{ _('label_max_forecast_value') }}: {{ max_forecast_value_with_unit }} ({{ _('label_at') }} {{ max_forecast_time_local }})
+{% else %}
+{{ _('label_max_forecast_value') }}: -
+{% endif %}
+
+{{ _('section_forecast_data') }}
+-----------------------
+{% if not forecast_rows %}
+{{ message_no_forecast_points }}
+{% else %}
+{{ '%-20s | %10s | %-16s | %-24s' | format(table_timestamp_label, table_value_label, table_above_limit_label, table_confidence_label) }}
+{{ '-' * 80 }}
+{% for row in forecast_rows %}
+{{ '%-20s | %10s | %-16s | %-24s' | format(row.timestamp_local, row.value_with_unit, row.above_limit_label, row.confidence) }}
+{% endfor %}
+{% endif %}

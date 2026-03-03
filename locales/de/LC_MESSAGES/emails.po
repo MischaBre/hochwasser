@@ -1,0 +1,149 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: hochwasser-alert-service\n"
+"POT-Creation-Date: 2026-03-03 00:00+0000\n"
+"PO-Revision-Date: 2026-03-03 00:00+0000\n"
+"Last-Translator: OpenCode\n"
+"Language: de\n"
+"Language-Team: German\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "subject"
+msgstr "[Hochwasser Alarm] {station}: {limit} {unit} erreicht"
+
+msgid "subject_state_update"
+msgstr "[Hochwasser Alarm] {station}: {state}"
+
+msgid "section_station_information"
+msgstr "Stationsinformationen"
+
+msgid "section_alert_context"
+msgstr "Alarmkontext"
+
+msgid "section_forecast_data"
+msgstr "Vorhersagedaten"
+
+msgid "section_hydrograph"
+msgstr "Hydrograph"
+
+msgid "label_station_uuid"
+msgstr "Stations-UUID"
+
+msgid "label_station_number"
+msgstr "Stationsnummer"
+
+msgid "label_short_name"
+msgstr "Kurzname"
+
+msgid "label_long_name"
+msgstr "Langname"
+
+msgid "label_agency"
+msgstr "Behörde"
+
+msgid "label_water_body"
+msgstr "Gewässer"
+
+msgid "label_water_shortname"
+msgstr "Gewässer-Kurzname"
+
+msgid "label_km"
+msgstr "KM"
+
+msgid "label_longitude"
+msgstr "Längengrad"
+
+msgid "label_latitude"
+msgstr "Breitengrad"
+
+msgid "label_timeseries"
+msgstr "Zeitreihen"
+
+msgid "label_threshold"
+msgstr "Grenzwert"
+
+msgid "label_current_value"
+msgstr "Aktueller Wert"
+
+msgid "label_trigger_source"
+msgstr "Auslöser"
+
+msgid "label_trigger_value"
+msgstr "Auslöserwert"
+
+msgid "label_trigger_time"
+msgstr "Auslösezeit"
+
+msgid "label_alert_state"
+msgstr "Alarmzustand"
+
+msgid "label_predicted_crossing"
+msgstr "Prognose Grenzwert erreicht"
+
+msgid "label_predicted_end"
+msgstr "Prognose Entwarnung"
+
+msgid "label_max_forecast_value"
+msgstr "Maximaler Vorhersagewert"
+
+msgid "label_at"
+msgstr "um"
+
+msgid "table_timestamp"
+msgstr "Zeitstempel"
+
+msgid "table_value"
+msgstr "Wert"
+
+msgid "table_above_limit"
+msgstr "Über Grenzwert"
+
+msgid "table_confidence"
+msgstr "80% Konf."
+
+msgid "value_yes"
+msgstr "JA"
+
+msgid "value_no"
+msgstr "nein"
+
+msgid "message_no_forecast_points"
+msgstr "Keine Vorhersagepunkte von der API geliefert."
+
+msgid "message_not_enough_chart_points"
+msgstr "Nicht genug Punkte für das Diagramm."
+
+msgid "message_not_available"
+msgstr "k. A."
+
+msgid "chart_threshold"
+msgstr "Grenzwert {limit} {unit}"
+
+msgid "chart_now"
+msgstr "jetzt"
+
+msgid "chart_time_label"
+msgstr "Zeit ({timezone})"
+
+msgid "chart_legend"
+msgstr "Blau: Wert unter Grenzwert, rot: Wert über Grenzwert, grau gestrichelt: 80%-Min/Max-Vorhersageband."
+
+msgid "trigger_source_current"
+msgstr "aktuell"
+
+msgid "trigger_source_official"
+msgstr "vorhersage"
+
+msgid "state_no_crossing"
+msgstr "entwarnung / kein grenzwert"
+
+msgid "state_crossing_incoming"
+msgstr "grenzwert bevorstehend"
+
+msgid "state_crossing_active"
+msgstr "grenzwert erreicht"
+
+msgid "state_crossing_soon_over"
+msgstr "grenzwert bald unterschritten"

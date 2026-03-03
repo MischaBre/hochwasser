@@ -251,9 +251,9 @@ def test_build_email_includes_station_details_and_forecast_table() -> None:
         zone,
     )
 
-    assert "Station UUID: station-1" in body
-    assert "Timeseries: W, WV" in body
-    assert "Forecast data (fetched)" in body
+    assert "Station UUID: station-1" not in body
+    assert "Timeseries: W, WV" not in body
+    assert "Forecast data" in body
     assert "80% conf." in body
     assert "91.0..111.0 cm" in body
     assert "Above limit" in body
