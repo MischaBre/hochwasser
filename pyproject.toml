@@ -13,13 +13,19 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+  "fastapi==0.116.1",
+  "httpx==0.28.1",
+  "PyJWT[crypto]==2.10.1",
   "pre-commit==4.5.1",
   "pytest==9.0.2",
   "ruff==0.15.2",
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = [".", "services/api/src"]
+markers = [
+  "integration: marks tests requiring a running Postgres database",
+]
 
 [tool.ruff]
 target-version = "py313"

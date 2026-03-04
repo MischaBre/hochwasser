@@ -4,7 +4,7 @@ UV ?= uv
 COMPOSE ?= docker compose
 COMPOSE_PROFILES ?= dev
 
-.PHONY: help install install-dev lint format-check test check i18n-tools-check i18n-compile i18n-check compose-config build up-dev up-prod down logs ps health prod-ready
+.PHONY: help install install-dev lint format-check test test-api-integration check i18n-tools-check i18n-compile i18n-check compose-config build up-dev up-prod down logs ps health db-rbac-verify prod-ready
 
 help:
 	@printf "Available targets:\n"
@@ -13,6 +13,7 @@ help:
 	@printf "  lint           Run Ruff checks\n"
 	@printf "  format-check   Run Ruff format check\n"
 	@printf "  test           Run pytest\n"
+	@printf "  test-api-integration Run API authz integration tests\n"
 	@printf "  check          Run lint + format-check + test\n"
 	@printf "  i18n-tools-check Ensure gettext tooling is installed\n"
 	@printf "  i18n-compile   Compile gettext catalogs (.po -> .mo)\n"
@@ -25,6 +26,7 @@ help:
 	@printf "  logs           Follow docker compose logs\n"
 	@printf "  ps             Show docker compose services\n"
 	@printf "  health         Check service /health endpoint\n"
+	@printf "  db-rbac-verify Verify DB role boundaries for engine/api\n"
 	@printf "  prod-ready     Run production readiness checks\n"
 
 install:
@@ -41,6 +43,9 @@ format-check:
 
 test:
 	$(UV) run pytest -q
+
+test-api-integration:
+	$(UV) run pytest -m integration -q
 
 check: lint format-check test
 
@@ -85,5 +90,8 @@ ps:
 
 health:
 	curl -fsS "http://localhost:8090/health"
+
+db-rbac-verify:
+	$(UV) run python scripts/verify_db_rbac.py
 
 prod-ready: check i18n-check compose-config
