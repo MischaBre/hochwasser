@@ -17,7 +17,7 @@ It checks:
 - Alert email includes detailed station metadata and a forecast table
 - Notification emails are rendered from Jinja templates in `templates/email/`
 - Built-in health endpoint at `/health` (default port `8090`)
-- Optional API container (`hochwasser-api`) with Supabase JWT auth and job CRUD
+- API container (`hochwasser-api`) with Supabase JWT auth and job CRUD
 - Docker healthcheck on the alert container
 - Watchdog container that alerts on container `die` / `unhealthy` events
 - Optional auto-restart of unhealthy containers via watchdog
@@ -48,7 +48,7 @@ docker compose logs -f
 
 ```bash
 uv venv
-uv sync --dev
+uv sync --dev --all-extras
 uv run pytest
 ```
 
@@ -67,7 +67,8 @@ It needs DB connectivity and uses one of:
 - `API_DATABASE_URL`
 - `DATABASE_URL`
 
-If you prefer plain `venv` + `pip`, the existing commands from `requirements.txt` still work.
+Dependencies are managed with `uv` and locked in `uv.lock`.
+Runtime extras are split into `alert` and `api`; local development and CI sync both via `--all-extras`.
 
 ## Linting And Formatting
 
@@ -81,7 +82,7 @@ uv run ruff format .
 Install pre-commit hooks:
 
 ```bash
-uv sync --dev
+uv sync --dev --all-extras
 uv run pre-commit install
 ```
 
@@ -163,7 +164,7 @@ Expected checks:
 
 ## API Endpoints
 
-If `hochwasser-api` is enabled in compose, it exposes port `8080` and provides:
+`hochwasser-api` exposes port `8080` and provides:
 
 - `GET /health/live`
 - `GET /health/ready`

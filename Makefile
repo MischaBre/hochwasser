@@ -30,10 +30,10 @@ help:
 	@printf "  prod-ready     Run production readiness checks\n"
 
 install:
-	$(UV) sync
+	$(UV) sync --all-extras
 
 install-dev:
-	$(UV) sync --dev
+	$(UV) sync --dev --all-extras
 
 lint:
 	$(UV) run ruff check .
