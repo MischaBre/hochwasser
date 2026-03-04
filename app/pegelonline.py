@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import json
 import logging
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import urlopen
+
+from app.http_json_client import HttpJsonClient
+from app.waterlevel_models import Measurement, StationInfo
 
 
 BASE_URL = "https://pegelonline.wsv.de/webservices/rest-api/v2"
@@ -14,51 +13,21 @@ BASE_URL = "https://pegelonline.wsv.de/webservices/rest-api/v2"
 logger = logging.getLogger("hochwasser-alert.pegelonline")
 
 
-@dataclass(frozen=True)
-class Measurement:
-    timestamp: datetime
-    value: float
-
-
-@dataclass(frozen=True)
-class StationInfo:
-    uuid: str
-    number: str
-    shortname: str
-    longname: str
-    km: float | None
-    agency: str
-    longitude: float | None
-    latitude: float | None
-    water_shortname: str
-    water_longname: str
-    unit: str
-    timeseries: tuple[dict[str, Any], ...]
-
-
-class PegelonlineClient:
+class PegelonlineClient(HttpJsonClient):
     def __init__(
         self,
         station_uuid: str,
         timeout_seconds: int = 20,
         forecast_series_shortname: str = "WV",
     ) -> None:
+        super().__init__(
+            base_url=BASE_URL,
+            timeout_seconds=timeout_seconds,
+            logger_name="hochwasser-alert.pegelonline",
+            provider_name="Pegelonline",
+        )
         self.station_uuid = station_uuid
-        self.timeout_seconds = timeout_seconds
         self.forecast_series_shortname = forecast_series_shortname
-
-    def _get_json(self, endpoint: str) -> Any:
-        url = f"{BASE_URL}{endpoint}"
-        logger.info("Fetching Pegelonline data: %s", url)
-        try:
-            with urlopen(url, timeout=self.timeout_seconds) as response:
-                data = json.loads(response.read().decode("utf-8"))
-                logger.info("Fetched Pegelonline response successfully: %s", url)
-                return data
-        except HTTPError as exc:
-            raise RuntimeError(f"HTTP {exc.code} for {url}") from exc
-        except URLError as exc:
-            raise RuntimeError(f"Could not reach {url}: {exc}") from exc
 
     def get_station_info(self) -> StationInfo:
         payload = self._get_json(

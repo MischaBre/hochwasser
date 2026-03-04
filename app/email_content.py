@@ -7,9 +7,9 @@ from app.config import AlertJob
 from app.email_templates import render_email_template
 from app.forecasting import Crossing, forecast_uncertainty_cm
 from app.locale_utils import format_float
-from app.pegelonline import Measurement, StationInfo
 from app.plotting import build_forecast_chart_payload
 from app.translator import translate
+from app.waterlevel_models import Measurement, StationInfo
 
 
 def build_email(

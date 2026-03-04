@@ -13,8 +13,8 @@ from matplotlib.ticker import FuncFormatter, MultipleLocator
 
 from app.forecasting import forecast_uncertainty_cm
 from app.locale_utils import format_float
-from app.pegelonline import Measurement
 from app.translator import translate
+from app.waterlevel_models import Measurement
 
 matplotlib.use("Agg")
 

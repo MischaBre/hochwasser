@@ -11,7 +11,7 @@ from app.email_content import build_notification_payload
 from app.forecasting import evaluate_lifecycle
 from app.job_scheduler import JobSchedulerManager
 from app.outbox_dispatcher import run_outbox_dispatch_cycle
-from app.pegelonline import PegelonlineClient
+from app.provider_client import WaterLevelProviderClient
 from app.runtime_health import RuntimeHealth, start_health_server
 from app.state_store import AlertStateStore
 from app.station_data_cache import StationDataCache
@@ -34,7 +34,7 @@ def _run_job_once(
     now: datetime,
     settings: Settings,
     job: AlertJob,
-    client: PegelonlineClient,
+    client: WaterLevelProviderClient,
     state_store: AlertStateStore,
     station_data_cache: StationDataCache[StationCycleData],
     zone: ZoneInfo,

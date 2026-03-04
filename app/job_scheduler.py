@@ -15,7 +15,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.config import AlertJob, Settings
 from app.notifier import send_alert_email
-from app.pegelonline import PegelonlineClient
+from app.provider_client import WaterLevelProviderClient, create_provider_client
 from app.runtime_health import RuntimeHealth
 from app.state_store import AlertStateStore
 from app.station_data_cache import StationDataCache
@@ -163,8 +163,9 @@ class JobSchedulerManager:
         dedupe_signature: tuple[tuple[str, object], ...],
     ) -> ManagedScheduledJob:
         scheduler_job_id = f"job-{job.job_uuid}"
-        client = PegelonlineClient(
-            job.station_uuid,
+        client = create_provider_client(
+            provider=settings.provider,
+            station_uuid=job.station_uuid,
             forecast_series_shortname=settings.forecast_series_shortname,
         )
         self._scheduler.add_job(
@@ -201,7 +202,7 @@ class JobSchedulerManager:
         self,
         settings: Settings,
         job: AlertJob,
-        client: PegelonlineClient,
+        client: WaterLevelProviderClient,
     ) -> None:
         now = datetime.now(tz=self._zone)
         try:

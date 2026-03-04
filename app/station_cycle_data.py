@@ -9,7 +9,8 @@ from app.forecasting import (
     forecast_horizon_hours_from_station,
     filter_future_forecast_points,
 )
-from app.pegelonline import Measurement, PegelonlineClient, StationInfo
+from app.provider_client import WaterLevelProviderClient
+from app.waterlevel_models import Measurement, StationInfo
 
 
 logger = logging.getLogger("hochwasser-alert")
@@ -30,7 +31,7 @@ class StationCycleData:
 
 def load_station_cycle_data(
     now: datetime,
-    client: PegelonlineClient,
+    client: WaterLevelProviderClient,
     settings: Settings,
     job: AlertJob,
 ) -> StationCycleData:

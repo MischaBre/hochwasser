@@ -4,13 +4,13 @@ import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from app.pegelonline import Measurement, StationInfo
 from app.state_store import (
     STATE_CROSSING_ACTIVE,
     STATE_CROSSING_INCOMING,
     STATE_CROSSING_SOON_OVER,
     STATE_NO_CROSSING,
 )
+from app.waterlevel_models import Measurement, StationInfo
 
 
 @dataclass(frozen=True)

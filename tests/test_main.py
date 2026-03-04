@@ -10,13 +10,13 @@ from app.forecasting import (
     filter_future_forecast_points,
     find_threshold_breach,
 )
-from app.pegelonline import Measurement, StationInfo
 from app.state_store import (
     STATE_CROSSING_ACTIVE,
     STATE_CROSSING_INCOMING,
     STATE_CROSSING_SOON_OVER,
     STATE_NO_CROSSING,
 )
+from app.waterlevel_models import Measurement, StationInfo
 
 
 def make_job(locale: str = "en", limit_cm: float = 100.0) -> AlertJob:
