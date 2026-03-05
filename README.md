@@ -17,6 +17,7 @@ It checks:
 - Alert email includes detailed station metadata and a forecast table
 - Notification emails are rendered from Jinja templates in `templates/email/`
 - Built-in health endpoint at `/health` (default port `8090`)
+- API container (`hochwasser-api`) with Supabase JWT auth and job CRUD
 - Docker healthcheck on the alert container
 - Watchdog container that alerts on container `die` / `unhealthy` events
 - Optional auto-restart of unhealthy containers via watchdog
@@ -47,7 +48,7 @@ docker compose logs -f
 
 ```bash
 uv venv
-uv sync --dev
+uv sync --dev --all-extras
 uv run pytest
 ```
 
@@ -56,9 +57,18 @@ Or use Make targets:
 ```bash
 make test
 make check
+make test-api-integration
 ```
 
-If you prefer plain `venv` + `pip`, the existing commands from `requirements.txt` still work.
+`test-api-integration` runs API authorization tests marked `integration`.
+It needs DB connectivity and uses one of:
+
+- `API_TEST_DATABASE_URL`
+- `API_DATABASE_URL`
+- `DATABASE_URL`
+
+Dependencies are managed with `uv` and locked in `uv.lock`.
+Runtime extras are split into `alert` and `api`; local development and CI sync both via `--all-extras`.
 
 ## Linting And Formatting
 
@@ -72,7 +82,7 @@ uv run ruff format .
 Install pre-commit hooks:
 
 ```bash
-uv sync --dev
+uv sync --dev --all-extras
 uv run pre-commit install
 ```
 
@@ -94,7 +104,7 @@ Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 
 - `PROVIDER`: currently only `pegelonline`
 - `COMPOSE_PROFILES`: use `dev` for local Postgres (no watchdog) or `prod` for watchdog with external DB
-- `DATABASE_URL`: Postgres connection string (local dev default points to `postgres` service)
+- `DATABASE_URL`: Postgres connection string used by `hochwasser-alert` engine
 - `FLYWAY_URL`: JDBC connection string for Flyway
 - `FLYWAY_USER`, `FLYWAY_PASSWORD`: DB credentials for Flyway
 - Each job supports: `job_uuid`, `name`, `station_uuid`, `limit_cm`, `recipients`, `alert_recipient`, `locale` (`de` or `en`), `schedule_cron`, `repeat_alerts_on_check` (bool, default `false`)
@@ -112,6 +122,69 @@ Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 - `HEALTH_HOST`: bind host for health endpoint (default `0.0.0.0`)
 - `HEALTH_PORT`: health endpoint port (default `8090`)
 - `HEALTH_FAILURE_THRESHOLD`: consecutive failed cycles before `/health` returns unhealthy (default `3`)
+
+API settings:
+
+- `API_DATABASE_URL`: Postgres connection string used by `hochwasser-api` (use a separate DB user)
+- `SUPABASE_JWKS_URL`: Supabase JWKS URL (`.../auth/v1/.well-known/jwks.json`)
+- `SUPABASE_ISSUER`: Supabase issuer (`.../auth/v1`)
+- `SUPABASE_AUDIENCE`: JWT audience expected by API (default `authenticated`)
+- `API_DEFAULT_ORG_ID`: single-org UUID used to scope all API operations
+- `API_INITIAL_ADMIN_USER_ID`: optional Supabase user UUID auto-assigned as admin on first request
+- `API_AUTO_PROVISION_MEMBERS`: auto-insert unknown authenticated users as org members (`true`/`false`)
+- `API_CORS_ALLOW_ORIGINS`: comma-separated allowed origins for browser calls
+
+### Database Roles And Grants
+
+Phase 1 introduces role-based DB grants in `sql/migrations/V8__rbac_grants.sql`:
+
+- `engine_role`: read jobs/org tables, write runtime/outbox tables
+- `api_role`: write jobs/org tables, read runtime/outbox tables
+- `readonly_role`: read-only access to all application tables
+
+The migration is safe if roles do not exist yet. It only applies grants for roles that are present.
+
+To bootstrap local roles/users, use `sql/bootstrap/create_app_roles.sql` and then point:
+
+- `DATABASE_URL` at `engine_user`
+- `API_DATABASE_URL` at `api_user`
+
+Verify role boundaries after bootstrap and migration:
+
+```bash
+make db-rbac-verify
+```
+
+Expected checks:
+
+- engine can read jobs and write runtime/outbox
+- engine cannot update jobs
+- api can read/update jobs
+- api cannot update runtime/outbox
+
+## API Endpoints
+
+`hochwasser-api` exposes port `8080` and provides:
+
+- `GET /health/live`
+- `GET /health/ready`
+- `GET /v1/me`
+- `GET /v1/jobs`
+- `POST /v1/jobs`
+- `PATCH /v1/jobs/{job_uuid}`
+- `DELETE /v1/jobs/{job_uuid}` (soft delete: sets `enabled=false`)
+- `GET /v1/jobs/{job_uuid}/status`
+- `GET /v1/jobs/{job_uuid}/outbox`
+- `GET /v1/admin/members` (admin only)
+- `POST /v1/admin/members/{user_id}/promote` (admin only)
+- `POST /v1/admin/members/{user_id}/demote` (admin only)
+- `GET /v1/admin/audit/jobs` (admin only)
+- `GET /v1/admin/audit/memberships` (admin only)
+
+Audit logging:
+
+- Job mutations are written to `public.job_audit_log`
+- Membership role changes are written to `public.membership_audit_log`
 
 Email templates:
 
