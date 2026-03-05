@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-body: 'Manrope', sans-serif;
+  --font-heading: 'Space Grotesk', sans-serif;
+  --ink-900: #1a2522;
+  --ink-700: #2f4a44;
+  --ink-500: #5f766f;
+  --surface-100: #f2f8f4;
+  --surface-200: #e2efe8;
+  --accent-500: #17816d;
+  --accent-600: #106954;
+  --alert-500: #cd5334;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--ink-900);
+  background:
+    radial-gradient(circle at 0 0, rgba(23, 129, 109, 0.18), transparent 44%),
+    radial-gradient(circle at 100% 100%, rgba(205, 83, 52, 0.14), transparent 42%),
+    linear-gradient(145deg, #f7fbf8 0%, #eef6f1 54%, #e6f1eb 100%);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 22px 38px rgba(20, 53, 45, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

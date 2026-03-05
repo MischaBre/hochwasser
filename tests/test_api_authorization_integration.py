@@ -37,10 +37,6 @@ def _resolve_db_url() -> str:
     raw = (
         os.getenv("API_TEST_DATABASE_URL")
         or _dotenv_value("API_TEST_DATABASE_URL")
-        or os.getenv("API_DATABASE_URL")
-        or _dotenv_value("API_DATABASE_URL")
-        or os.getenv("DATABASE_URL")
-        or _dotenv_value("DATABASE_URL")
         or ""
     )
     if not raw:
@@ -66,6 +62,16 @@ def _resolve_db_url() -> str:
     )
 
 
+def _is_safe_test_db_url(db_url: str) -> bool:
+    parsed = urlsplit(db_url)
+    db_name = parsed.path.lstrip("/").lower()
+
+    if os.getenv("ALLOW_INTEGRATION_DB_NONTEST", "").lower() == "true":
+        return True
+
+    return "test" in db_name
+
+
 def _best_effort_cleanup(
     db_url: str, sql_text: str, params: tuple[object, ...]
 ) -> None:
@@ -85,7 +91,11 @@ pytestmark = pytest.mark.integration
 @pytest.fixture(scope="module")
 def db_url() -> str:
     if not DB_URL:
-        pytest.skip("integration DB url not configured")
+        pytest.skip("integration DB url not configured (set API_TEST_DATABASE_URL)")
+    if not _is_safe_test_db_url(DB_URL):
+        pytest.skip(
+            "integration DB URL must point to a test database (name should include 'test')"
+        )
     try:
         with psycopg.connect(DB_URL) as conn:
             with conn.cursor() as cur:

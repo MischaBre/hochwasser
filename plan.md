@@ -54,33 +54,39 @@ Build a frontend for user registration, login, and self-service job management o
 - Environment variables:
   - `VITE_API_BASE_URL` (e.g. `http://localhost:8080`)
   - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
+  - `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+## Current Status
+- Phase 1 complete.
+- Phase 2 complete.
+- Phase 3 complete.
+- Phase 4 complete.
 
 ## Delivery Phases
 
 ### Phase 1: Frontend Bootstrap
-- Initialize Vite + Vue + TypeScript app.
-- Add Vue Router, base layout, auth composables, and route guards.
-- Configure Tailwind CSS tokens/utilities and base design primitives.
-- Install and configure PrimeVue theme/components integrated with Tailwind utility classes.
-- Add `.env.example` for frontend variables.
+- [x] Initialize Vite + Vue + TypeScript app.
+- [x] Add Vue Router, base layout, auth composables, and route guards.
+- [x] Configure Tailwind CSS tokens/utilities and base design primitives.
+- [x] Install and configure PrimeVue theme/components integrated with Tailwind utility classes.
+- [x] Add `.env.example` for frontend variables.
 
 ### Phase 2: Authentication
-- Implement register/login forms via Supabase Auth.
-- Implement auth state listener and token retrieval.
-- Protect app routes; redirect unauthenticated users to login.
+- [x] Implement register/login forms via Supabase Auth.
+- [x] Implement auth state listener and token retrieval.
+- [x] Protect app routes; redirect unauthenticated users to login.
 
 ### Phase 3: API Integration
-- Build API client that attaches JWT from Supabase session.
-- Implement global handling for `401`/`403` and validation errors.
-- Add `GET /v1/me` call on app load to confirm membership/role.
+- [x] Build API client that attaches JWT from Supabase session.
+- [x] Implement global handling for `401`/`403` and validation errors.
+- [x] Add `GET /v1/me` call on app load to confirm membership/role.
 
 ### Phase 4: Jobs Management UI
-- Jobs list page (`GET /v1/jobs`).
-- Create job form (`POST /v1/jobs`) with client-side validation aligned to backend schema.
-- Edit job form (`PATCH /v1/jobs/{job_uuid}`).
-- Delete action (`DELETE /v1/jobs/{job_uuid}` with optimistic UI refresh).
-- Job details:
+- [x] Jobs list page (`GET /v1/jobs`).
+- [x] Create job form (`POST /v1/jobs`) with client-side validation aligned to backend schema.
+- [x] Edit job form (`PATCH /v1/jobs/{job_uuid}`).
+- [x] Delete action (`DELETE /v1/jobs/{job_uuid}` with optimistic UI refresh).
+- [x] Job details:
   - Status panel (`/status`)
   - Outbox table with pagination (`/outbox?limit&offset`)
 
@@ -99,6 +105,7 @@ Build a frontend for user registration, login, and self-service job management o
 ### Phase 7: Testing
 - Unit tests for auth and API client behavior.
 - Component tests for key forms and table states.
+- Use a dedicated integration test database via `API_TEST_DATABASE_URL` (no fallback to dev DB URLs).
 - Optional E2E smoke flow:
   - Login
   - Create job

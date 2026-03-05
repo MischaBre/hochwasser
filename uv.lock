@@ -381,6 +381,7 @@ alert = [
     { name = "matplotlib" },
 ]
 api = [
+    { name = "apscheduler" },
     { name = "fastapi" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "uvicorn" },
@@ -397,6 +398,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "apscheduler", marker = "extra == 'alert'", specifier = "==3.11.2" },
+    { name = "apscheduler", marker = "extra == 'api'", specifier = "==3.11.2" },
     { name = "docker", marker = "extra == 'alert'", specifier = "==7.1.0" },
     { name = "fastapi", marker = "extra == 'api'", specifier = "==0.116.1" },
     { name = "jinja2", marker = "extra == 'alert'", specifier = "==3.1.6" },
