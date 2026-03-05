@@ -177,6 +177,25 @@ class OutboxListResponse(BaseModel):
     offset: int
 
 
+class StationSummaryResponse(BaseModel):
+    uuid: str
+    number: str
+    shortname: str
+    longname: str
+    km: float | None
+    agency: str
+    longitude: float | None
+    latitude: float | None
+    water_shortname: str
+    water_longname: str
+
+
+class StationListResponse(BaseModel):
+    items: list[StationSummaryResponse]
+    limit: int
+    offset: int
+
+
 class OrganizationMemberResponse(BaseModel):
     user_id: UUID
     role: Literal["admin", "member"]

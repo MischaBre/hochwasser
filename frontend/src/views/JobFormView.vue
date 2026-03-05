@@ -14,6 +14,8 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError, type ValidationIssue } from '@/api/client'
 import { createJob, listJobs, updateJob } from '@/features/jobs/api'
+import { listStations } from '@/features/stations/api'
+import type { StationSummary } from '@/features/stations/types'
 import {
   hasJobFormErrors,
   toCreatePayload,
@@ -55,6 +57,7 @@ const touched = reactive<Record<JobFormField, boolean>>({
 const submitAttempted = ref(false)
 const serverErrors = reactive<JobFormErrors>({})
 const clientErrors = computed(() => validateJobForm(form))
+const stationSearch = ref('')
 
 const jobsQuery = useQuery({
   queryKey: ['jobs', 'all'],
@@ -68,6 +71,116 @@ const currentJob = computed(() => {
   }
 
   return jobsQuery.data.value?.find((job) => job.job_uuid === jobUuid.value) ?? null
+})
+
+const stationsQuery = useQuery({
+  queryKey: computed(() => ['stations', 'search', stationSearch.value]),
+  queryFn: () => listStations({ search: stationSearch.value, limit: 30, offset: 0 }),
+  staleTime: 5 * 60 * 1000,
+})
+
+const selectedStationQuery = useQuery({
+  queryKey: computed(() => ['stations', 'selected', form.station_uuid]),
+  queryFn: () => listStations({ uuids: [form.station_uuid], limit: 1, offset: 0 }),
+  enabled: computed(() => form.station_uuid.trim().length > 0),
+  staleTime: 5 * 60 * 1000,
+})
+
+const stationOptions = computed(() => stationsQuery.data.value?.items ?? [])
+const selectedStation = computed(() => {
+  if (selectedStationQuery.data.value?.items.length) {
+    return selectedStationQuery.data.value.items[0]
+  }
+
+  return stationOptions.value.find((station) => station.uuid === form.station_uuid) ?? null
+})
+
+const formatStationLabel = (station: StationSummary): string => {
+  const water = station.water_longname || station.water_shortname
+  if (water) {
+    return `${station.shortname} - ${water}`
+  }
+
+  return station.shortname
+}
+
+const normalizeStationSearch = (value: string): string => {
+  return value
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
+const stationHint = computed(() => {
+  if (!selectedStation.value) {
+    return ''
+  }
+
+  const station = selectedStation.value
+  const pieces = [station.longname]
+  if (station.agency) {
+    pieces.push(station.agency)
+  }
+  pieces.push(station.uuid)
+  return pieces.join(' | ')
+})
+
+const stationQueryError = computed(() => {
+  const error = stationsQuery.error.value
+  if (error instanceof ApiError) {
+    return error.message
+  }
+
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return ''
+})
+
+const onStationSearchChange = (value: string): void => {
+  stationSearch.value = value
+
+  if (
+    selectedStation.value
+    && normalizeStationSearch(value) === normalizeStationSearch(formatStationLabel(selectedStation.value))
+  ) {
+    return
+  }
+
+  form.station_uuid = ''
+  clearServerError('station_uuid')
+}
+
+const selectStation = (station: StationSummary): void => {
+  form.station_uuid = station.uuid
+  stationSearch.value = formatStationLabel(station)
+  markTouched('station_uuid')
+  clearServerError('station_uuid')
+}
+
+const showNoStationMatches = computed(() => {
+  if (stationsQuery.isLoading.value) {
+    return false
+  }
+
+  if (stationOptions.value.length > 0) {
+    return false
+  }
+
+  if (!stationSearch.value.trim()) {
+    return false
+  }
+
+  if (
+    selectedStation.value
+    && normalizeStationSearch(stationSearch.value) === normalizeStationSearch(formatStationLabel(selectedStation.value))
+  ) {
+    return false
+  }
+
+  return true
 })
 
 const clearServerError = (field: JobFormField | 'form'): void => {
@@ -138,6 +251,7 @@ watch(currentJob, (job) => {
 
   form.name = job.name
   form.station_uuid = job.station_uuid
+  stationSearch.value = job.station_uuid
   form.limit_cm = String(job.limit_cm)
   form.recipients = job.recipients.join(', ')
   form.alert_recipient = job.alert_recipient
@@ -155,6 +269,16 @@ watch(currentJob, (job) => {
     delete serverErrors[key]
   }
 }, { immediate: true })
+
+watch(selectedStation, (station) => {
+  if (!station) {
+    return
+  }
+
+  if (!stationSearch.value || stationSearch.value === form.station_uuid) {
+    stationSearch.value = formatStationLabel(station)
+  }
+})
 
 const submitMutation = useMutation({
   mutationFn: async () => {
@@ -235,19 +359,37 @@ const submit = async () => {
             </div>
 
             <div class="space-y-2">
-              <Label for="station-uuid">Station UUID</Label>
+              <Label for="station-search">Station</Label>
               <div class="relative">
                 <MapPin class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  id="station-uuid"
-                  v-model="form.station_uuid"
+                  id="station-search"
+                  :model-value="stationSearch"
                   class="pl-9"
-                  placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000"
+                  placeholder="Search stations by name, river, or UUID"
                   required
                   @blur="markTouched('station_uuid')"
-                  @input="clearServerError('station_uuid')"
+                  @update:model-value="onStationSearchChange"
                 />
               </div>
+
+              <div class="max-h-44 overflow-y-auto rounded-md border">
+                <button
+                  v-for="station in stationOptions"
+                  :key="station.uuid"
+                  type="button"
+                  class="flex w-full flex-col items-start gap-0.5 border-b px-3 py-2 text-left last:border-b-0 hover:bg-accent"
+                  @click="selectStation(station)"
+                >
+                  <span class="text-sm font-medium">{{ formatStationLabel(station) }}</span>
+                  <span class="text-xs text-muted-foreground">{{ station.uuid }}</span>
+                </button>
+                <div v-if="stationsQuery.isLoading.value" class="px-3 py-2 text-xs text-muted-foreground">Loading stations...</div>
+                <div v-else-if="showNoStationMatches" class="px-3 py-2 text-xs text-muted-foreground">No matching station found.</div>
+              </div>
+
+              <p v-if="stationHint" class="text-xs text-muted-foreground">Selected: {{ stationHint }}</p>
+              <p v-if="stationQueryError" class="text-xs text-destructive">{{ stationQueryError }}</p>
               <p v-if="getFieldError('station_uuid')" class="text-sm text-destructive">{{ getFieldError('station_uuid') }}</p>
             </div>
 

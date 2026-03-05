@@ -13,6 +13,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { deleteJob, listJobs } from '@/features/jobs/api'
+import { listStations } from '@/features/stations/api'
 
 const router = useRouter()
 const queryClient = useQueryClient()
@@ -33,6 +34,30 @@ const deleteMutation = useMutation({
 })
 
 const jobs = computed(() => jobsQuery.data.value ?? [])
+
+const stationUuids = computed(() => {
+  return Array.from(new Set(jobs.value.map((job) => job.station_uuid).filter(Boolean)))
+})
+
+const stationsQuery = useQuery({
+  queryKey: computed(() => ['stations', 'jobs', stationUuids.value]),
+  queryFn: () => listStations({ uuids: stationUuids.value, limit: stationUuids.value.length || 1, offset: 0 }),
+  enabled: computed(() => stationUuids.value.length > 0),
+  staleTime: 5 * 60 * 1000,
+})
+
+const stationsByUuid = computed(() => {
+  const map = new Map<string, { label: string; detail: string }>()
+
+  for (const station of stationsQuery.data.value?.items ?? []) {
+    const water = station.water_longname || station.water_shortname
+    const label = water ? `${station.shortname} - ${water}` : station.shortname
+    const detail = [station.agency, station.uuid].filter(Boolean).join(' | ')
+    map.set(station.uuid, { label, detail })
+  }
+
+  return map
+})
 
 const errorMessage = computed(() => {
   const error = jobsQuery.error.value
@@ -112,7 +137,10 @@ const handleDelete = async (jobUuid: string) => {
             <tbody>
               <tr v-for="job in jobs" :key="job.job_uuid" class="border-b last:border-none">
                 <td class="py-3 pr-4 font-semibold">{{ job.name }}</td>
-                <td class="py-3 pr-4 text-muted-foreground">{{ job.station_uuid }}</td>
+                <td class="py-3 pr-4">
+                  <p class="font-medium">{{ stationsByUuid.get(job.station_uuid)?.label || job.station_uuid }}</p>
+                  <p class="text-xs text-muted-foreground">{{ stationsByUuid.get(job.station_uuid)?.detail || job.station_uuid }}</p>
+                </td>
                 <td class="py-3 pr-4 text-muted-foreground">{{ job.limit_cm }} cm</td>
                 <td class="py-3 pr-4 text-muted-foreground">{{ job.locale }}</td>
                 <td class="py-3 pr-4">

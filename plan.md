@@ -64,6 +64,7 @@ Build a frontend for user registration, login, and self-service job management o
 - Phase 5 complete.
 - Phase 6 complete.
 - Phase 7 deferred (post-MVP hardening).
+- Phase 8 in progress.
 
 ## Delivery Phases
 
@@ -117,6 +118,13 @@ Build a frontend for user registration, login, and self-service job management o
   - Delete job
 
 Testing is intentionally deferred while frontend delivery is in flow. Revisit Phase 7 in a later hardening stage.
+
+### Phase 8: Station Discovery And Enriched Job Context
+- [ ] Add API endpoint to fetch Pegelonline stations with search/filter and short-lived caching.
+- [ ] Replace manual `station_uuid` entry in job form with searchable station picker.
+- [ ] Keep UUID as the persisted value while showing human-readable station metadata in form.
+- [ ] Enrich jobs list/details with station name, water body, agency, and coordinates where available.
+- [ ] Evaluate map picker as optional follow-up after searchable dropdown baseline.
 
 ## Definition of Done
 - User can register and login from frontend.

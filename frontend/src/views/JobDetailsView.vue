@@ -11,6 +11,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
 import { getJobOutbox, getJobStatus, listJobs } from '@/features/jobs/api'
+import { listStations } from '@/features/stations/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,6 +26,15 @@ const jobsQuery = useQuery({
 })
 
 const job = computed(() => jobsQuery.data.value?.find((item) => item.job_uuid === jobUuid.value))
+
+const stationQuery = useQuery({
+  queryKey: computed(() => ['stations', 'job-details', job.value?.station_uuid || '']),
+  queryFn: () => listStations({ uuids: [job.value?.station_uuid || ''], limit: 1, offset: 0 }),
+  enabled: computed(() => Boolean(job.value?.station_uuid)),
+  staleTime: 5 * 60 * 1000,
+})
+
+const station = computed(() => stationQuery.data.value?.items[0] ?? null)
 
 const statusQuery = useQuery({
   queryKey: computed(() => ['job-status', jobUuid.value]),
@@ -94,7 +104,23 @@ const prevPage = () => {
         <Alert v-else-if="!job" variant="destructive">Job not found.</Alert>
         <div v-else class="grid gap-4 text-sm text-muted-foreground md:grid-cols-2">
           <div class="space-y-2 rounded-md border bg-muted/30 p-4">
-            <p><span class="font-semibold text-foreground">Station:</span> {{ job.station_uuid }}</p>
+            <p>
+              <span class="font-semibold text-foreground">Station:</span>
+              {{ station ? `${station.shortname} - ${station.longname}` : job.station_uuid }}
+            </p>
+            <p>
+              <span class="font-semibold text-foreground">Water:</span>
+              {{ station?.water_longname || station?.water_shortname || 'n/a' }}
+            </p>
+            <p>
+              <span class="font-semibold text-foreground">Agency:</span>
+              {{ station?.agency || 'n/a' }}
+            </p>
+            <p>
+              <span class="font-semibold text-foreground">Coordinates:</span>
+              {{ station?.latitude ?? 'n/a' }}, {{ station?.longitude ?? 'n/a' }}
+            </p>
+            <p><span class="font-semibold text-foreground">Station UUID:</span> {{ job.station_uuid }}</p>
             <p><span class="font-semibold text-foreground">Limit:</span> {{ job.limit_cm }} cm</p>
             <p><span class="font-semibold text-foreground">Schedule:</span> {{ job.schedule_cron }}</p>
             <p><span class="font-semibold text-foreground">Locale:</span> {{ job.locale }}</p>

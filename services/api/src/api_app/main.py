@@ -44,7 +44,10 @@ from api_app.schemas import (
     OrganizationMembersListResponse,
     OutboxEntryResponse,
     OutboxListResponse,
+    StationListResponse,
+    StationSummaryResponse,
 )
+from api_app.stations import list_stations
 
 app = FastAPI(title="Hochwasser API", version="0.1.0")
 
@@ -131,6 +134,32 @@ def get_jobs(
         include_disabled=include_disabled,
     )
     return [JobResponse(**row) for row in rows]
+
+
+@app.get("/v1/stations", response_model=StationListResponse)
+def get_stations(
+    actor: ActorDep,
+    search: str = Query(default="", max_length=120),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    uuids: str = Query(default="", max_length=10000),
+) -> StationListResponse:
+    del actor
+
+    requested_uuids = tuple(
+        candidate.strip() for candidate in uuids.split(",") if candidate.strip()
+    )
+    rows = list_stations(
+        search=search,
+        limit=limit,
+        offset=offset,
+        uuids=requested_uuids,
+    )
+    return StationListResponse(
+        items=[StationSummaryResponse(**row.__dict__) for row in rows],
+        limit=limit,
+        offset=offset,
+    )
 
 
 @app.post("/v1/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
