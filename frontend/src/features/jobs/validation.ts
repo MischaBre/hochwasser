@@ -102,9 +102,20 @@ export const validateJobForm = (state: JobFormState): JobFormErrors => {
     errors.schedule_cron = 'Schedule must be a valid 5-field crontab expression.'
   }
 
-  const limitCm = Number(state.limit_cm)
-  if (Number.isNaN(limitCm) || limitCm <= -10000 || limitCm >= 100000) {
-    errors.limit_cm = 'Limit must be between -10000 and 100000.'
+  const limitRaw = state.limit_cm.trim()
+  if (!limitRaw) {
+    errors.limit_cm = 'Limit is required.'
+    return errors
+  }
+
+  if (!/^\d+$/.test(limitRaw)) {
+    errors.limit_cm = 'Limit must be a whole number between 0 and 100000.'
+    return errors
+  }
+
+  const limitCm = Number(limitRaw)
+  if (limitCm < 0 || limitCm >= 100000) {
+    errors.limit_cm = 'Limit must be between 0 and 100000.'
   }
 
   return errors

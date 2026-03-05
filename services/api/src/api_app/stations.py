@@ -71,6 +71,8 @@ def _station_matches_search(station: StationSummary, query: str) -> bool:
     if not normalized_query:
         return True
 
+    query_tokens = normalized_query.split(" ")
+
     haystack = " ".join(
         (
             station.uuid,
@@ -83,7 +85,7 @@ def _station_matches_search(station: StationSummary, query: str) -> bool:
         )
     )
     normalized_haystack = _normalize_search_text(haystack)
-    return normalized_query in normalized_haystack
+    return all(token in normalized_haystack for token in query_tokens)
 
 
 def _normalize_search_text(value: str) -> str:

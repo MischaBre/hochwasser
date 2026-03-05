@@ -58,6 +58,15 @@ const submitAttempted = ref(false)
 const serverErrors = reactive<JobFormErrors>({})
 const clientErrors = computed(() => validateJobForm(form))
 const stationSearch = ref('')
+const stationPanelOpen = ref(false)
+
+const normalizeStationSearch = (value: string): string => {
+  return value
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+}
 
 const jobsQuery = useQuery({
   queryKey: ['jobs', 'all'],
@@ -73,9 +82,20 @@ const currentJob = computed(() => {
   return jobsQuery.data.value?.find((job) => job.job_uuid === jobUuid.value) ?? null
 })
 
+const stationSearchTokens = computed(() => {
+  const normalized = normalizeStationSearch(stationSearch.value)
+  if (!normalized) {
+    return [] as string[]
+  }
+
+  return normalized.split(' ').filter(Boolean)
+})
+
+const stationQueryTerm = computed(() => stationSearchTokens.value[0] ?? '')
+
 const stationsQuery = useQuery({
-  queryKey: computed(() => ['stations', 'search', stationSearch.value]),
-  queryFn: () => listStations({ search: stationSearch.value, limit: 30, offset: 0 }),
+  queryKey: computed(() => ['stations', 'search', stationQueryTerm.value]),
+  queryFn: () => listStations({ search: stationQueryTerm.value, limit: 50, offset: 0 }),
   staleTime: 5 * 60 * 1000,
 })
 
@@ -86,7 +106,29 @@ const selectedStationQuery = useQuery({
   staleTime: 5 * 60 * 1000,
 })
 
-const stationOptions = computed(() => stationsQuery.data.value?.items ?? [])
+const stationSearchIndex = (station: StationSummary): string => {
+  const water = station.water_longname || station.water_shortname
+  return normalizeStationSearch([
+    station.uuid,
+    station.number,
+    station.shortname,
+    station.longname,
+    station.agency,
+    water,
+  ].filter(Boolean).join(' '))
+}
+
+const stationOptions = computed(() => {
+  const items = stationsQuery.data.value?.items ?? []
+  if (stationSearchTokens.value.length === 0) {
+    return items
+  }
+
+  return items.filter((station) => {
+    const index = stationSearchIndex(station)
+    return stationSearchTokens.value.every((token) => index.includes(token))
+  })
+})
 const selectedStation = computed(() => {
   if (selectedStationQuery.data.value?.items.length) {
     return selectedStationQuery.data.value.items[0]
@@ -104,12 +146,22 @@ const formatStationLabel = (station: StationSummary): string => {
   return station.shortname
 }
 
-const normalizeStationSearch = (value: string): string => {
-  return value
-    .toLocaleLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()
-    .replace(/\s+/g, ' ')
+const formatStationDetails = (station: StationSummary): string => {
+  const water = station.water_longname || station.water_shortname || '-'
+  const km = station.km === null ? '-' : String(station.km)
+  const coordinates = station.latitude === null || station.longitude === null
+    ? '-'
+    : `${station.latitude}, ${station.longitude}`
+
+  return [
+    `UUID: ${station.uuid}`,
+    `Long name: ${station.longname}`,
+    `Water: ${water}`,
+    `Agency: ${station.agency || '-'}`,
+    `Number: ${station.number || '-'}`,
+    `KM: ${km}`,
+    `Coords: ${coordinates}`,
+  ].join(' | ')
 }
 
 const stationHint = computed(() => {
@@ -141,6 +193,7 @@ const stationQueryError = computed(() => {
 
 const onStationSearchChange = (value: string): void => {
   stationSearch.value = value
+  stationPanelOpen.value = true
 
   if (
     selectedStation.value
@@ -156,8 +209,23 @@ const onStationSearchChange = (value: string): void => {
 const selectStation = (station: StationSummary): void => {
   form.station_uuid = station.uuid
   stationSearch.value = formatStationLabel(station)
+  stationPanelOpen.value = false
   markTouched('station_uuid')
   clearServerError('station_uuid')
+}
+
+const onStationSearchFocus = (): void => {
+  stationPanelOpen.value = true
+}
+
+const onStationSearchBlur = (): void => {
+  stationPanelOpen.value = false
+  markTouched('station_uuid')
+}
+
+const onLimitChange = (value: string): void => {
+  form.limit_cm = value.replace(/\D+/g, '')
+  clearServerError('limit_cm')
 }
 
 const showNoStationMatches = computed(() => {
@@ -181,6 +249,14 @@ const showNoStationMatches = computed(() => {
   }
 
   return true
+})
+
+const showStationResultsPanel = computed(() => {
+  if (!stationPanelOpen.value) {
+    return false
+  }
+
+  return stationsQuery.isLoading.value || stationOptions.value.length > 0 || showNoStationMatches.value
 })
 
 const clearServerError = (field: JobFormField | 'form'): void => {
@@ -368,21 +444,23 @@ const submit = async () => {
                   class="pl-9"
                   placeholder="Search stations by name, river, or UUID"
                   required
-                  @blur="markTouched('station_uuid')"
+                  @focus="onStationSearchFocus"
+                  @blur="onStationSearchBlur"
                   @update:model-value="onStationSearchChange"
                 />
               </div>
 
-              <div class="max-h-44 overflow-y-auto rounded-md border">
+              <div v-if="showStationResultsPanel" class="max-h-44 overflow-y-auto rounded-md border">
                 <button
                   v-for="station in stationOptions"
                   :key="station.uuid"
                   type="button"
                   class="flex w-full flex-col items-start gap-0.5 border-b px-3 py-2 text-left last:border-b-0 hover:bg-accent"
+                  @mousedown.prevent
                   @click="selectStation(station)"
                 >
                   <span class="text-sm font-medium">{{ formatStationLabel(station) }}</span>
-                  <span class="text-xs text-muted-foreground">{{ station.uuid }}</span>
+                  <span class="text-xs text-muted-foreground">{{ formatStationDetails(station) }}</span>
                 </button>
                 <div v-if="stationsQuery.isLoading.value" class="px-3 py-2 text-xs text-muted-foreground">Loading stations...</div>
                 <div v-else-if="showNoStationMatches" class="px-3 py-2 text-xs text-muted-foreground">No matching station found.</div>
@@ -399,12 +477,15 @@ const submit = async () => {
                 <Gauge class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="limit-cm"
-                  v-model="form.limit_cm"
+                  :model-value="form.limit_cm"
                   class="pl-9"
-                  inputmode="decimal"
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputmode="numeric"
                   required
                   @blur="markTouched('limit_cm')"
-                  @input="clearServerError('limit_cm')"
+                  @update:model-value="onLimitChange"
                 />
               </div>
               <p v-if="getFieldError('limit_cm')" class="text-sm text-destructive">{{ getFieldError('limit_cm') }}</p>
