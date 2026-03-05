@@ -1,0 +1,124 @@
+# Frontend Plan (Auth + Job Management)
+
+## Goal
+Build a frontend for user registration, login, and self-service job management on top of the existing API.
+
+## Current Backend Reality
+- Auth is bearer JWT verification (Supabase issuer/JWKS), not username/password endpoints in this API.
+- Frontend must authenticate against Supabase Auth and send `Authorization: Bearer <token>` to API.
+- Job permissions are already enforced server-side:
+  - Members can manage their own jobs.
+  - Admins can manage all org jobs.
+- Key endpoints already available:
+  - `GET /v1/me`
+  - `GET/POST/PATCH/DELETE /v1/jobs`
+  - `GET /v1/jobs/{job_uuid}/status`
+  - `GET /v1/jobs/{job_uuid}/outbox`
+  - Admin endpoints under `/v1/admin/*`
+
+## Scope (v1)
+- Auth UI:
+  - Register
+  - Login
+  - Logout
+  - Session persistence
+- Jobs UI:
+  - List jobs (default enabled only)
+  - Create job
+  - Edit own job
+  - Soft-delete own job
+  - View job status
+  - View job outbox entries
+- Basic account area:
+  - Show current user and role from `/v1/me`
+- Error handling:
+  - `401` (not authenticated), `403` (not allowed), `404`, validation errors
+
+## Proposed Tech Stack
+- Vue 3 + TypeScript + Vite
+- Vue Router
+- Pinia + Vue Query (for shared state and API state/caching)
+- Tailwind CSS
+- PrimeVue component library
+- Supabase JS client for auth
+- Form validation with VeeValidate + Zod (or lightweight schema-first custom validation)
+
+## Architecture
+- `frontend/` (new app)
+- Core modules:
+  - `auth/` (Supabase client, auth context, route guards)
+  - `api/` (typed API client with bearer token injection)
+  - `features/jobs/` (list, create/edit form, details/status/outbox)
+  - `pages/` (Login, Register, Dashboard, JobForm, JobDetails)
+  - `components/` (shared UI primitives, layout, feedback states)
+- Environment variables:
+  - `VITE_API_BASE_URL` (e.g. `http://localhost:8080`)
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+
+## Delivery Phases
+
+### Phase 1: Frontend Bootstrap
+- Initialize Vite + Vue + TypeScript app.
+- Add Vue Router, base layout, auth composables, and route guards.
+- Configure Tailwind CSS tokens/utilities and base design primitives.
+- Install and configure PrimeVue theme/components integrated with Tailwind utility classes.
+- Add `.env.example` for frontend variables.
+
+### Phase 2: Authentication
+- Implement register/login forms via Supabase Auth.
+- Implement auth state listener and token retrieval.
+- Protect app routes; redirect unauthenticated users to login.
+
+### Phase 3: API Integration
+- Build API client that attaches JWT from Supabase session.
+- Implement global handling for `401`/`403` and validation errors.
+- Add `GET /v1/me` call on app load to confirm membership/role.
+
+### Phase 4: Jobs Management UI
+- Jobs list page (`GET /v1/jobs`).
+- Create job form (`POST /v1/jobs`) with client-side validation aligned to backend schema.
+- Edit job form (`PATCH /v1/jobs/{job_uuid}`).
+- Delete action (`DELETE /v1/jobs/{job_uuid}` with optimistic UI refresh).
+- Job details:
+  - Status panel (`/status`)
+  - Outbox table with pagination (`/outbox?limit&offset`)
+
+### Phase 5: UX Hardening
+- Loading, empty, and error states for all views.
+- Toasts/inline messages for success/failure.
+- Confirm dialogs for destructive actions.
+- Mobile-friendly responsive layout.
+
+### Phase 6: Local Dev + Deployment Integration
+- Add frontend service to `docker-compose.yml`.
+- Set `API_CORS_ALLOW_ORIGINS` to frontend origin(s).
+- Verify full local flow: register -> login -> create/edit/delete/view jobs.
+- Document run instructions in `README.md`.
+
+### Phase 7: Testing
+- Unit tests for auth and API client behavior.
+- Component tests for key forms and table states.
+- Optional E2E smoke flow:
+  - Login
+  - Create job
+  - Edit job
+  - Delete job
+
+## Definition of Done
+- User can register and login from frontend.
+- Authenticated user can create and manage own jobs.
+- Role and identity are visible via `/v1/me`.
+- API errors are handled clearly in UI.
+- Works in local Docker setup with correct CORS.
+- Basic tests pass and `README.md` is updated.
+
+## Risks / Notes
+- Registration/login depends on Supabase project configuration (email provider, redirect URLs, etc.).
+- API auto-provisions members depending on `API_AUTO_PROVISION_MEMBERS`; if disabled, login can succeed but API access may still be denied.
+- Ensure frontend and API origins are consistent with CORS settings.
+
+## Out of Scope (for v1)
+- Full admin console for member role changes and audit logs.
+- Advanced design system/theming.
+- Internationalized UI copy.
