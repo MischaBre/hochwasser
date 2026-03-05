@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import InputText from 'primevue/inputtext'
-import Message from 'primevue/message'
-import Password from 'primevue/password'
+import Alert from '@/components/ui/alert/Alert.vue'
+import Button from '@/components/ui/button/Button.vue'
+import Card from '@/components/ui/card/Card.vue'
+import CardContent from '@/components/ui/card/CardContent.vue'
+import CardFooter from '@/components/ui/card/CardFooter.vue'
+import CardHeader from '@/components/ui/card/CardHeader.vue'
+import CardTitle from '@/components/ui/card/CardTitle.vue'
+import Input from '@/components/ui/input/Input.vue'
+import Label from '@/components/ui/label/Label.vue'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -33,42 +37,35 @@ const submit = async () => {
 
 <template>
   <section class="mx-auto max-w-lg">
-    <Card class="glass-card rounded-2xl">
-      <template #title>
-        <h2 class="text-2xl font-semibold text-ink-900">Welcome back</h2>
-      </template>
-      <template #content>
-        <form class="space-y-4" @submit.prevent="submit">
-          <span class="p-float-label block">
-            <InputText id="email" v-model="email" class="w-full" autocomplete="email" type="email" required />
-            <label for="email">Email</label>
-          </span>
+    <Card>
+      <CardHeader>
+        <CardTitle>Welcome back</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form class="space-y-5" @submit.prevent="submit">
+          <div class="space-y-2">
+            <Label for="email">Email</Label>
+            <Input id="email" v-model="email" autocomplete="email" type="email" required />
+          </div>
 
-          <span class="p-float-label block">
-            <Password
-              id="password"
-              v-model="password"
-              class="w-full"
-              input-class="w-full"
-              :feedback="false"
-              autocomplete="current-password"
-              toggle-mask
-              required
-            />
-            <label for="password">Password</label>
-          </span>
+          <div class="space-y-2">
+            <Label for="password">Password</Label>
+            <Input id="password" v-model="password" autocomplete="current-password" type="password" required />
+          </div>
 
-          <Message v-if="errorMessage" severity="error" :closable="false">{{ errorMessage }}</Message>
+          <Alert v-if="errorMessage" variant="destructive">{{ errorMessage }}</Alert>
 
-          <Button class="w-full" type="submit" label="Sign in" icon="pi pi-sign-in" :loading="authStore.loading" />
+          <Button class="w-full" type="submit" :disabled="authStore.loading">
+            {{ authStore.loading ? 'Signing in...' : 'Sign in' }}
+          </Button>
         </form>
-      </template>
-      <template #footer>
-        <div class="mt-3 text-sm text-ink-700">
+      </CardContent>
+      <CardFooter>
+        <div class="mt-1 text-sm text-muted-foreground">
           New here?
-          <RouterLink class="font-semibold text-accent-600 hover:text-accent-500" to="/register">Create account</RouterLink>
+          <RouterLink class="font-semibold text-primary hover:underline" to="/register">Create account</RouterLink>
         </div>
-      </template>
+      </CardFooter>
     </Card>
   </section>
 </template>

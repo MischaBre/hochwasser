@@ -123,6 +123,27 @@ services:
       API_AUTO_PROVISION_MEMBERS: "${API_AUTO_PROVISION_MEMBERS:-true}"
       API_CORS_ALLOW_ORIGINS: ${API_CORS_ALLOW_ORIGINS}
 
+  hochwasser-frontend:
+    image: node:20-alpine
+    container_name: hochwasser-frontend
+    restart: unless-stopped
+    profiles:
+      - dev
+    working_dir: /app/frontend
+    command: ["sh", "-lc", "npm install && npm run dev -- --host 0.0.0.0 --port 5173"]
+    depends_on:
+      hochwasser-api:
+        condition: service_started
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:8080}"
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    volumes:
+      - ./frontend:/app/frontend
+      - frontend_node_modules:/app/frontend/node_modules
+
   container-watchdog:
     build: .
     container_name: container-watchdog
@@ -161,3 +182,4 @@ services:
 
 volumes:
   postgres_data:
+  frontend_node_modules:

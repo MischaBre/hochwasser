@@ -39,9 +39,9 @@ Build a frontend for user registration, login, and self-service job management o
 - Vue Router
 - Pinia + Vue Query (for shared state and API state/caching)
 - Tailwind CSS
-- PrimeVue component library
+- shadcn-vue style UI primitives (local `components/ui` on Tailwind)
 - Supabase JS client for auth
-- Form validation with VeeValidate + Zod (or lightweight schema-first custom validation)
+- Lightweight schema-aligned custom validation with field-level client/server mapping
 
 ## Architecture
 - `frontend/` (new app)
@@ -61,6 +61,9 @@ Build a frontend for user registration, login, and self-service job management o
 - Phase 2 complete.
 - Phase 3 complete.
 - Phase 4 complete.
+- Phase 5 complete.
+- Phase 6 complete.
+- Phase 7 deferred (post-MVP hardening).
 
 ## Delivery Phases
 
@@ -68,7 +71,7 @@ Build a frontend for user registration, login, and self-service job management o
 - [x] Initialize Vite + Vue + TypeScript app.
 - [x] Add Vue Router, base layout, auth composables, and route guards.
 - [x] Configure Tailwind CSS tokens/utilities and base design primitives.
-- [x] Install and configure PrimeVue theme/components integrated with Tailwind utility classes.
+- [x] Establish shared UI component primitives under `frontend/src/components/ui`.
 - [x] Add `.env.example` for frontend variables.
 
 ### Phase 2: Authentication
@@ -89,28 +92,31 @@ Build a frontend for user registration, login, and self-service job management o
 - [x] Job details:
   - Status panel (`/status`)
   - Outbox table with pagination (`/outbox?limit&offset`)
+- [x] Field-level validation UX in job form (inline errors per input + server validation issue mapping).
 
 ### Phase 5: UX Hardening
-- Loading, empty, and error states for all views.
-- Toasts/inline messages for success/failure.
-- Confirm dialogs for destructive actions.
-- Mobile-friendly responsive layout.
+- [x] Loading, empty, and error states for all views.
+- [x] Inline messages for success/failure and validation.
+- [x] Confirm dialogs for destructive actions.
+- [x] Mobile-friendly responsive layout.
 
 ### Phase 6: Local Dev + Deployment Integration
-- Add frontend service to `docker-compose.yml`.
-- Set `API_CORS_ALLOW_ORIGINS` to frontend origin(s).
-- Verify full local flow: register -> login -> create/edit/delete/view jobs.
-- Document run instructions in `README.md`.
+- [x] Add frontend service to `docker-compose.yml`.
+- [x] Set `API_CORS_ALLOW_ORIGINS` to frontend origin(s).
+- [x] Verify full local flow: register -> login -> create/edit/delete/view jobs.
+- [x] Document run instructions in `README.md`.
 
 ### Phase 7: Testing
-- Unit tests for auth and API client behavior.
-- Component tests for key forms and table states.
-- Use a dedicated integration test database via `API_TEST_DATABASE_URL` (no fallback to dev DB URLs).
-- Optional E2E smoke flow:
+- [ ] Unit tests for auth and API client behavior.
+- [ ] Component tests for key forms and table states.
+- [ ] Use a dedicated integration test database via `API_TEST_DATABASE_URL` (no fallback to dev DB URLs).
+- [ ] Optional E2E smoke flow:
   - Login
   - Create job
   - Edit job
   - Delete job
+
+Testing is intentionally deferred while frontend delivery is in flow. Revisit Phase 7 in a later hardening stage.
 
 ## Definition of Done
 - User can register and login from frontend.

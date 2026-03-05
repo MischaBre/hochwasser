@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import Card from 'primevue/card'
-import Message from 'primevue/message'
-import Tag from 'primevue/tag'
+import Alert from '@/components/ui/alert/Alert.vue'
+import Badge from '@/components/ui/badge/Badge.vue'
+import Card from '@/components/ui/card/Card.vue'
+import CardContent from '@/components/ui/card/CardContent.vue'
+import CardHeader from '@/components/ui/card/CardHeader.vue'
+import CardTitle from '@/components/ui/card/CardTitle.vue'
 import { computed } from 'vue'
 import { useCurrentUserQuery } from '@/features/account/useCurrentUser'
 import { useAuth } from '@/composables/useAuth'
@@ -45,45 +48,45 @@ const membershipErrorMessage = computed(() => {
 
 <template>
   <section class="grid gap-5 md:grid-cols-[2fr_1fr]">
-    <Card class="glass-card rounded-2xl">
-      <template #title>
-        <h2 class="text-2xl font-semibold text-ink-900">Account overview</h2>
-      </template>
-      <template #content>
-        <div class="space-y-3 text-sm text-ink-700">
-          <p class="text-balance leading-6">Membership data is loaded from <code>/v1/me</code> during authenticated app usage.</p>
-          <div v-if="isMeSuccess" class="space-y-2 rounded-xl bg-surface-100 p-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>Account overview</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div class="space-y-3 text-sm text-muted-foreground">
+          <p class="leading-6">Membership data is loaded from <code>/v1/me</code> during authenticated app usage.</p>
+          <div v-if="isMeSuccess" class="space-y-2 rounded-md border bg-muted/30 p-4">
             <div class="flex items-center justify-between">
               <span>Role</span>
-              <Tag :severity="membershipTagSeverity" :value="meData?.role" />
+              <Badge :variant="membershipTagSeverity === 'danger' ? 'destructive' : 'secondary'">{{ meData?.role }}</Badge>
             </div>
             <div class="flex items-center justify-between gap-4">
               <span>Organization</span>
-              <code class="max-w-[220px] truncate rounded bg-surface-200 px-2 py-1 text-xs">{{ meData?.org_id }}</code>
+              <code class="max-w-[220px] truncate rounded bg-muted px-2 py-1 text-xs">{{ meData?.org_id }}</code>
             </div>
           </div>
-          <Message v-else-if="isMeError" severity="error" :closable="false">{{ membershipErrorMessage }}</Message>
-          <p v-else class="text-xs text-ink-500">Waiting for session to load.</p>
+          <Alert v-else-if="isMeError" variant="destructive">{{ membershipErrorMessage }}</Alert>
+          <p v-else class="text-xs text-muted-foreground">Waiting for session to load.</p>
         </div>
-      </template>
+      </CardContent>
     </Card>
 
-    <Card class="glass-card rounded-2xl">
-      <template #title>
-        <h3 class="text-lg font-semibold text-ink-900">Session</h3>
-      </template>
-      <template #content>
-        <div class="space-y-3 text-sm text-ink-700">
+    <Card>
+      <CardHeader>
+        <CardTitle class="text-lg">Session</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div class="space-y-3 text-sm text-muted-foreground">
           <div class="flex items-center justify-between">
             <span>Status</span>
-            <Tag :severity="isAuthenticated ? 'success' : 'warning'" :value="isAuthenticated ? 'Authenticated' : 'Guest'" />
+            <Badge :variant="isAuthenticated ? 'default' : 'secondary'">{{ isAuthenticated ? 'Authenticated' : 'Guest' }}</Badge>
           </div>
           <div class="flex items-center justify-between">
             <span>User ID</span>
-            <code class="max-w-[190px] truncate rounded bg-surface-200 px-2 py-1 text-xs">{{ userId || 'Not signed in' }}</code>
+            <code class="max-w-[190px] truncate rounded bg-muted px-2 py-1 text-xs">{{ userId || 'Not signed in' }}</code>
           </div>
         </div>
-      </template>
+      </CardContent>
     </Card>
   </section>
 </template>

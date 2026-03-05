@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { useQuery } from '@tanstack/vue-query'
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import Message from 'primevue/message'
-import Tag from 'primevue/tag'
+import Alert from '@/components/ui/alert/Alert.vue'
+import Badge from '@/components/ui/badge/Badge.vue'
+import Button from '@/components/ui/button/Button.vue'
+import Card from '@/components/ui/card/Card.vue'
+import CardContent from '@/components/ui/card/CardContent.vue'
+import CardHeader from '@/components/ui/card/CardHeader.vue'
+import CardTitle from '@/components/ui/card/CardTitle.vue'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError } from '@/api/client'
@@ -70,69 +73,70 @@ const prevPage = () => {
 
 <template>
   <section class="space-y-4">
-    <Card class="glass-card rounded-2xl">
-      <template #title>
+    <Card>
+      <CardHeader>
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <h2 class="text-2xl font-semibold text-ink-900">{{ job?.name || 'Job details' }}</h2>
+          <CardTitle>{{ job?.name || 'Job details' }}</CardTitle>
           <div class="flex gap-2">
-            <Button text label="Back" icon="pi pi-arrow-left" @click="router.push({ name: 'jobs' })" />
+            <Button variant="ghost" @click="router.push({ name: 'jobs' })">Back</Button>
             <Button
-              label="Edit"
-              icon="pi pi-pencil"
+              variant="outline"
               :disabled="!job"
               @click="router.push({ name: 'job-edit', params: { jobUuid } })"
-            />
+            >
+              Edit
+            </Button>
           </div>
         </div>
-      </template>
-      <template #content>
-        <div v-if="jobsQuery.isLoading.value" class="text-sm text-ink-500">Loading job...</div>
-        <Message v-else-if="!job" severity="error" :closable="false">Job not found.</Message>
-        <div v-else class="grid gap-4 md:grid-cols-2 text-sm text-ink-700">
-          <div class="space-y-2 rounded-xl bg-surface-100 p-4">
-            <p><span class="font-semibold text-ink-900">Station:</span> {{ job.station_uuid }}</p>
-            <p><span class="font-semibold text-ink-900">Limit:</span> {{ job.limit_cm }} cm</p>
-            <p><span class="font-semibold text-ink-900">Schedule:</span> {{ job.schedule_cron }}</p>
-            <p><span class="font-semibold text-ink-900">Locale:</span> {{ job.locale }}</p>
-            <p><span class="font-semibold text-ink-900">Alert recipient:</span> {{ job.alert_recipient }}</p>
-            <p><span class="font-semibold text-ink-900">Recipients:</span> {{ job.recipients.join(', ') }}</p>
-            <Tag :severity="job.enabled ? 'success' : 'warning'" :value="job.enabled ? 'Enabled' : 'Disabled'" />
+      </CardHeader>
+      <CardContent>
+        <div v-if="jobsQuery.isLoading.value" class="text-sm text-muted-foreground">Loading job...</div>
+        <Alert v-else-if="!job" variant="destructive">Job not found.</Alert>
+        <div v-else class="grid gap-4 text-sm text-muted-foreground md:grid-cols-2">
+          <div class="space-y-2 rounded-md border bg-muted/30 p-4">
+            <p><span class="font-semibold text-foreground">Station:</span> {{ job.station_uuid }}</p>
+            <p><span class="font-semibold text-foreground">Limit:</span> {{ job.limit_cm }} cm</p>
+            <p><span class="font-semibold text-foreground">Schedule:</span> {{ job.schedule_cron }}</p>
+            <p><span class="font-semibold text-foreground">Locale:</span> {{ job.locale }}</p>
+            <p><span class="font-semibold text-foreground">Alert recipient:</span> {{ job.alert_recipient }}</p>
+            <p><span class="font-semibold text-foreground">Recipients:</span> {{ job.recipients.join(', ') }}</p>
+            <Badge :variant="job.enabled ? 'default' : 'secondary'">{{ job.enabled ? 'Enabled' : 'Disabled' }}</Badge>
           </div>
 
-          <div class="space-y-2 rounded-xl bg-surface-100 p-4">
-            <p class="font-semibold text-ink-900">Status</p>
-            <Message v-if="statusQuery.isError.value && statusError" severity="error" :closable="false">{{ statusError }}</Message>
-            <div v-else-if="statusQuery.isLoading.value" class="text-sm text-ink-500">Loading status...</div>
+          <div class="space-y-2 rounded-md border bg-muted/30 p-4">
+            <p class="font-semibold text-foreground">Status</p>
+            <Alert v-if="statusQuery.isError.value && statusError" variant="destructive">{{ statusError }}</Alert>
+            <div v-else-if="statusQuery.isLoading.value" class="text-sm text-muted-foreground">Loading status...</div>
             <div v-else-if="statusQuery.data.value" class="space-y-2">
-              <p><span class="font-semibold text-ink-900">State:</span> {{ statusQuery.data.value.state || 'n/a' }}</p>
-              <p><span class="font-semibold text-ink-900">State since:</span> {{ statusQuery.data.value.state_since || 'n/a' }}</p>
+              <p><span class="font-semibold text-foreground">State:</span> {{ statusQuery.data.value.state || 'n/a' }}</p>
+              <p><span class="font-semibold text-foreground">State since:</span> {{ statusQuery.data.value.state_since || 'n/a' }}</p>
               <p>
-                <span class="font-semibold text-ink-900">Predicted peak:</span>
+                <span class="font-semibold text-foreground">Predicted peak:</span>
                 {{ statusQuery.data.value.predicted_peak_cm ?? 'n/a' }} at {{ statusQuery.data.value.predicted_peak_at || 'n/a' }}
               </p>
-              <p><span class="font-semibold text-ink-900">Last notified:</span> {{ statusQuery.data.value.last_notified_at || 'n/a' }}</p>
+              <p><span class="font-semibold text-foreground">Last notified:</span> {{ statusQuery.data.value.last_notified_at || 'n/a' }}</p>
             </div>
           </div>
         </div>
-      </template>
+      </CardContent>
     </Card>
 
-    <Card class="glass-card rounded-2xl">
-      <template #title>
+    <Card>
+      <CardHeader>
         <div class="flex items-center justify-between">
-          <h3 class="text-xl font-semibold text-ink-900">Outbox</h3>
-          <p class="text-xs text-ink-500">limit {{ outboxLimit }} | offset {{ outboxOffset }}</p>
+          <CardTitle>Outbox</CardTitle>
+          <p class="text-xs text-muted-foreground">limit {{ outboxLimit }} | offset {{ outboxOffset }}</p>
         </div>
-      </template>
-      <template #content>
-        <Message v-if="outboxQuery.isError.value && outboxError" severity="error" :closable="false">{{ outboxError }}</Message>
-        <div v-else-if="outboxQuery.isLoading.value" class="text-sm text-ink-500">Loading outbox...</div>
-        <div v-else-if="!outboxQuery.data.value || outboxQuery.data.value.items.length === 0" class="text-sm text-ink-700">No outbox entries.</div>
+      </CardHeader>
+      <CardContent>
+        <Alert v-if="outboxQuery.isError.value && outboxError" variant="destructive">{{ outboxError }}</Alert>
+        <div v-else-if="outboxQuery.isLoading.value" class="text-sm text-muted-foreground">Loading outbox...</div>
+        <div v-else-if="!outboxQuery.data.value || outboxQuery.data.value.items.length === 0" class="text-sm text-muted-foreground">No outbox entries.</div>
         <div v-else class="space-y-4">
           <div class="overflow-x-auto">
             <table class="w-full min-w-[820px] border-collapse text-left text-sm">
               <thead>
-                <tr class="border-b border-surface-200 text-xs uppercase tracking-[0.12em] text-ink-500">
+                <tr class="border-b text-xs uppercase tracking-wide text-muted-foreground">
                   <th class="py-3 pr-4">ID</th>
                   <th class="py-3 pr-4">Target</th>
                   <th class="py-3 pr-4">Reason</th>
@@ -142,7 +146,7 @@ const prevPage = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="entry in outboxQuery.data.value.items" :key="entry.id" class="border-b border-surface-200/80 last:border-none">
+                <tr v-for="entry in outboxQuery.data.value.items" :key="entry.id" class="border-b last:border-none">
                   <td class="py-3 pr-4">{{ entry.id }}</td>
                   <td class="py-3 pr-4">{{ entry.target_state }}</td>
                   <td class="py-3 pr-4">{{ entry.trigger_reason }}</td>
@@ -154,16 +158,18 @@ const prevPage = () => {
             </table>
           </div>
           <div class="flex justify-end gap-2">
-            <Button text label="Previous" :disabled="outboxOffset === 0" @click="prevPage" />
+            <Button variant="outline" size="sm" :disabled="outboxOffset === 0" @click="prevPage">Previous</Button>
             <Button
-              text
-              label="Next"
+              variant="outline"
+              size="sm"
               :disabled="(outboxQuery.data.value?.items.length ?? 0) < outboxLimit"
               @click="nextPage"
-            />
+            >
+              Next
+            </Button>
           </div>
         </div>
-      </template>
+      </CardContent>
     </Card>
   </section>
 </template>

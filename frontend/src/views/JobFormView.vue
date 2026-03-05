@@ -1,23 +1,31 @@
 <script setup lang="ts">
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import Checkbox from 'primevue/checkbox'
-import Dropdown from 'primevue/dropdown'
-import InputText from 'primevue/inputtext'
-import Message from 'primevue/message'
-import Textarea from 'primevue/textarea'
-import { useToast } from 'primevue/usetoast'
-import { computed, reactive, watch } from 'vue'
+import { Clock3, Gauge, Languages, MapPin, Send, Tag, Users } from 'lucide-vue-next'
+import Alert from '@/components/ui/alert/Alert.vue'
+import Button from '@/components/ui/button/Button.vue'
+import Card from '@/components/ui/card/Card.vue'
+import CardContent from '@/components/ui/card/CardContent.vue'
+import CardHeader from '@/components/ui/card/CardHeader.vue'
+import CardTitle from '@/components/ui/card/CardTitle.vue'
+import Input from '@/components/ui/input/Input.vue'
+import Label from '@/components/ui/label/Label.vue'
+import Textarea from '@/components/ui/textarea/Textarea.vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiError } from '@/api/client'
+import { ApiError, type ValidationIssue } from '@/api/client'
 import { createJob, listJobs, updateJob } from '@/features/jobs/api'
-import { toCreatePayload, validateJobForm, type JobFormState } from '@/features/jobs/validation'
+import {
+  hasJobFormErrors,
+  toCreatePayload,
+  validateJobForm,
+  type JobFormErrors,
+  type JobFormField,
+  type JobFormState,
+} from '@/features/jobs/validation'
 
 const route = useRoute()
 const router = useRouter()
 const queryClient = useQueryClient()
-const toast = useToast()
 
 const jobUuid = computed(() => route.params.jobUuid as string | undefined)
 const isEditMode = computed(() => route.name === 'job-edit')
@@ -34,7 +42,19 @@ const form = reactive<JobFormState>({
   enabled: true,
 })
 
-const validationError = computed(() => validateJobForm(form))
+const touched = reactive<Record<JobFormField, boolean>>({
+  name: false,
+  station_uuid: false,
+  limit_cm: false,
+  recipients: false,
+  alert_recipient: false,
+  locale: false,
+  schedule_cron: false,
+})
+
+const submitAttempted = ref(false)
+const serverErrors = reactive<JobFormErrors>({})
+const clientErrors = computed(() => validateJobForm(form))
 
 const jobsQuery = useQuery({
   queryKey: ['jobs', 'all'],
@@ -50,6 +70,67 @@ const currentJob = computed(() => {
   return jobsQuery.data.value?.find((job) => job.job_uuid === jobUuid.value) ?? null
 })
 
+const clearServerError = (field: JobFormField | 'form'): void => {
+  delete serverErrors[field]
+}
+
+const markTouched = (field: JobFormField): void => {
+  touched[field] = true
+}
+
+const getFieldError = (field: JobFormField): string => {
+  if (serverErrors[field]) {
+    return serverErrors[field] as string
+  }
+
+  if (submitAttempted.value || touched[field]) {
+    return clientErrors.value[field] ?? ''
+  }
+
+  return ''
+}
+
+const mapValidationIssues = (issues: ValidationIssue[]): JobFormErrors => {
+  const nextErrors: JobFormErrors = {}
+
+  for (const issue of issues) {
+    const message = issue.msg?.trim()
+    if (!message) {
+      continue
+    }
+
+    const loc = issue.loc?.filter((value): value is string => typeof value === 'string') ?? []
+    let field: JobFormField | undefined
+
+    for (let index = loc.length - 1; index >= 0; index -= 1) {
+      const value = loc[index]
+      if (
+        value === 'name'
+        || value === 'station_uuid'
+        || value === 'limit_cm'
+        || value === 'recipients'
+        || value === 'alert_recipient'
+        || value === 'locale'
+        || value === 'schedule_cron'
+      ) {
+        field = value
+        break
+      }
+    }
+
+    if (field && !nextErrors[field]) {
+      nextErrors[field] = message
+      continue
+    }
+
+    if (!nextErrors.form) {
+      nextErrors.form = message
+    }
+  }
+
+  return nextErrors
+}
+
 watch(currentJob, (job) => {
   if (!job) {
     return
@@ -64,6 +145,15 @@ watch(currentJob, (job) => {
   form.schedule_cron = job.schedule_cron
   form.repeat_alerts_on_check = job.repeat_alerts_on_check
   form.enabled = job.enabled
+
+  for (const field of Object.keys(touched) as JobFormField[]) {
+    touched[field] = false
+  }
+
+  submitAttempted.value = false
+  for (const key of Object.keys(serverErrors) as Array<JobFormField | 'form'>) {
+    delete serverErrors[key]
+  }
 }, { immediate: true })
 
 const submitMutation = useMutation({
@@ -77,28 +167,28 @@ const submitMutation = useMutation({
     return createJob(payload)
   },
   onSuccess: async (job) => {
-    toast.add({
-      severity: 'success',
-      summary: isEditMode.value ? 'Job updated' : 'Job created',
-      detail: isEditMode.value ? 'Changes were saved successfully.' : 'New job saved successfully.',
-      life: 2500,
-    })
     await queryClient.invalidateQueries({ queryKey: ['jobs'] })
     await router.push({ name: 'job-details', params: { jobUuid: job.job_uuid } })
   },
-  onError: () => {
-    toast.add({
-      severity: 'error',
-      summary: 'Save failed',
-      detail: 'Could not save the job. Please review the fields.',
-      life: 3500,
-    })
+  onError: (error) => {
+    if (error instanceof ApiError && error.validationIssues.length > 0) {
+      const mappedErrors = mapValidationIssues(error.validationIssues)
+      for (const key of Object.keys(serverErrors) as Array<JobFormField | 'form'>) {
+        delete serverErrors[key]
+      }
+      for (const [key, value] of Object.entries(mappedErrors) as Array<[JobFormField | 'form', string]>) {
+        serverErrors[key] = value
+      }
+    }
   },
 })
 
 const submitError = computed(() => {
   const error = submitMutation.error.value
   if (error instanceof ApiError) {
+    if (error.validationIssues.length > 0) {
+      return ''
+    }
     return error.message
   }
 
@@ -110,13 +200,10 @@ const submitError = computed(() => {
 })
 
 const submit = async () => {
-  if (validationError.value) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Validation issue',
-      detail: validationError.value,
-      life: 2500,
-    })
+  submitAttempted.value = true
+  clearServerError('form')
+
+  if (hasJobFormErrors(clientErrors.value)) {
     return
   }
 
@@ -126,86 +213,150 @@ const submit = async () => {
 
 <template>
   <section>
-    <Card class="glass-card rounded-2xl">
-      <template #title>
-        <h2 class="text-2xl font-semibold text-ink-900">{{ isEditMode ? 'Edit job' : 'Create job' }}</h2>
-      </template>
-      <template #content>
+    <Card>
+      <CardHeader>
+        <CardTitle>{{ isEditMode ? 'Edit job' : 'Create job' }}</CardTitle>
+      </CardHeader>
+      <CardContent>
         <div class="space-y-4">
-          <Message v-if="isEditMode && jobsQuery.isLoading.value" severity="info" :closable="false">Loading job...</Message>
-          <Message v-if="isEditMode && !jobsQuery.isLoading.value && !currentJob" severity="error" :closable="false">Job not found.</Message>
-          <Message v-if="validationError" severity="warn" :closable="false">{{ validationError }}</Message>
-          <Message v-if="submitMutation.isError.value && submitError" severity="error" :closable="false">{{ submitError }}</Message>
+          <Alert v-if="isEditMode && jobsQuery.isLoading.value">Loading job...</Alert>
+          <Alert v-if="isEditMode && !jobsQuery.isLoading.value && !currentJob" variant="destructive">Job not found.</Alert>
+          <Alert v-if="serverErrors.form" variant="destructive">{{ serverErrors.form }}</Alert>
+          <Alert v-if="submitMutation.isError.value && submitError" variant="destructive">{{ submitError }}</Alert>
 
-          <form class="grid gap-4 md:grid-cols-2" @submit.prevent="submit">
-            <span class="p-float-label block">
-              <InputText id="job-name" v-model="form.name" class="w-full" required />
-              <label for="job-name">Name</label>
-            </span>
+          <form class="grid gap-x-4 gap-y-6 md:grid-cols-2" @submit.prevent="submit">
+            <div class="space-y-2">
+              <Label for="job-name">Name</Label>
+              <div class="relative">
+                <Tag class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input id="job-name" v-model="form.name" class="pl-9" required @blur="markTouched('name')" @input="clearServerError('name')" />
+              </div>
+              <p v-if="getFieldError('name')" class="text-sm text-destructive">{{ getFieldError('name') }}</p>
+            </div>
 
-            <span class="p-float-label block">
-              <InputText id="station-uuid" v-model="form.station_uuid" class="w-full" required />
-              <label for="station-uuid">Station UUID</label>
-            </span>
+            <div class="space-y-2">
+              <Label for="station-uuid">Station UUID</Label>
+              <div class="relative">
+                <MapPin class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="station-uuid"
+                  v-model="form.station_uuid"
+                  class="pl-9"
+                  required
+                  @blur="markTouched('station_uuid')"
+                  @input="clearServerError('station_uuid')"
+                />
+              </div>
+              <p v-if="getFieldError('station_uuid')" class="text-sm text-destructive">{{ getFieldError('station_uuid') }}</p>
+            </div>
 
-            <span class="p-float-label block">
-              <InputText id="limit-cm" v-model="form.limit_cm" class="w-full" inputmode="decimal" required />
-              <label for="limit-cm">Limit (cm)</label>
-            </span>
+            <div class="space-y-2">
+              <Label for="limit-cm">Limit (cm)</Label>
+              <div class="relative">
+                <Gauge class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="limit-cm"
+                  v-model="form.limit_cm"
+                  class="pl-9"
+                  inputmode="decimal"
+                  required
+                  @blur="markTouched('limit_cm')"
+                  @input="clearServerError('limit_cm')"
+                />
+              </div>
+              <p v-if="getFieldError('limit_cm')" class="text-sm text-destructive">{{ getFieldError('limit_cm') }}</p>
+            </div>
 
-            <span class="p-float-label block">
-              <Dropdown
-                id="locale"
-                v-model="form.locale"
-                class="w-full"
-                :options="[
-                  { label: 'German (de)', value: 'de' },
-                  { label: 'English (en)', value: 'en' },
-                ]"
-                option-label="label"
-                option-value="value"
-              />
-              <label for="locale">Locale</label>
-            </span>
+            <div class="space-y-2">
+              <Label for="locale">Locale</Label>
+              <div class="relative">
+                <Languages class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <select
+                  id="locale"
+                  v-model="form.locale"
+                  class="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  @blur="markTouched('locale')"
+                  @change="clearServerError('locale')"
+                >
+                  <option value="de">German (de)</option>
+                  <option value="en">English (en)</option>
+                </select>
+              </div>
+              <p v-if="getFieldError('locale')" class="text-sm text-destructive">{{ getFieldError('locale') }}</p>
+            </div>
 
-            <span class="p-float-label block md:col-span-2">
-              <InputText id="alert-recipient" v-model="form.alert_recipient" class="w-full" required />
-              <label for="alert-recipient">Alert recipient</label>
-            </span>
+            <div class="space-y-2 md:col-span-2">
+              <Label for="alert-recipient">Alert recipient</Label>
+              <div class="relative">
+                <Send class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="alert-recipient"
+                  v-model="form.alert_recipient"
+                  class="pl-9"
+                  required
+                  @blur="markTouched('alert_recipient')"
+                  @input="clearServerError('alert_recipient')"
+                />
+              </div>
+              <p v-if="getFieldError('alert_recipient')" class="text-sm text-destructive">{{ getFieldError('alert_recipient') }}</p>
+            </div>
 
-            <span class="p-float-label block md:col-span-2">
-              <Textarea id="recipients" v-model="form.recipients" rows="3" class="w-full" required />
-              <label for="recipients">Recipients (comma or newline separated)</label>
-            </span>
+            <div class="space-y-2 md:col-span-2">
+              <Label for="recipients">Recipients (comma or newline separated)</Label>
+              <div class="relative">
+                <Users class="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Textarea
+                  id="recipients"
+                  v-model="form.recipients"
+                  rows="3"
+                  class="pl-9"
+                  required
+                  @blur="markTouched('recipients')"
+                  @input="clearServerError('recipients')"
+                />
+              </div>
+              <p v-if="getFieldError('recipients')" class="text-sm text-destructive">{{ getFieldError('recipients') }}</p>
+            </div>
 
-            <span class="p-float-label block md:col-span-2">
-              <InputText id="schedule-cron" v-model="form.schedule_cron" class="w-full" required />
-              <label for="schedule-cron">Schedule cron (5 fields)</label>
-            </span>
+            <div class="space-y-2 md:col-span-2">
+              <Label for="schedule-cron">Schedule cron (5 fields)</Label>
+              <div class="relative">
+                <Clock3 class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="schedule-cron"
+                  v-model="form.schedule_cron"
+                  class="pl-9"
+                  required
+                  @blur="markTouched('schedule_cron')"
+                  @input="clearServerError('schedule_cron')"
+                />
+              </div>
+              <p v-if="getFieldError('schedule_cron')" class="text-sm text-destructive">{{ getFieldError('schedule_cron') }}</p>
+            </div>
 
-            <div class="md:col-span-2 flex flex-wrap items-center gap-4 text-sm text-ink-700">
+            <div class="md:col-span-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <div class="flex items-center gap-2">
-                <Checkbox v-model="form.repeat_alerts_on_check" binary input-id="repeat-alerts" />
-                <label for="repeat-alerts">Repeat alerts on check</label>
+                <input id="repeat-alerts" v-model="form.repeat_alerts_on_check" type="checkbox" class="h-4 w-4 rounded border-input" />
+                <Label for="repeat-alerts">Repeat alerts on check</Label>
               </div>
               <div v-if="isEditMode" class="flex items-center gap-2">
-                <Checkbox v-model="form.enabled" binary input-id="job-enabled" />
-                <label for="job-enabled">Enabled</label>
+                <input id="job-enabled" v-model="form.enabled" type="checkbox" class="h-4 w-4 rounded border-input" />
+                <Label for="job-enabled">Enabled</Label>
               </div>
             </div>
 
             <div class="md:col-span-2 flex items-center justify-end gap-2 pt-2">
-              <Button text label="Cancel" @click="router.push({ name: 'jobs' })" />
+              <Button variant="ghost" @click="router.push({ name: 'jobs' })">Cancel</Button>
               <Button
                 type="submit"
-                :label="isEditMode ? 'Save changes' : 'Create job'"
-                :loading="submitMutation.isPending.value"
-                :disabled="Boolean(validationError) || (isEditMode && !currentJob)"
-              />
+                :disabled="submitMutation.isPending.value || hasJobFormErrors(clientErrors) || (isEditMode && !currentJob)"
+              >
+                {{ submitMutation.isPending.value ? 'Saving...' : (isEditMode ? 'Save changes' : 'Create job') }}
+              </Button>
             </div>
           </form>
         </div>
-      </template>
+      </CardContent>
     </Card>
   </section>
 </template>

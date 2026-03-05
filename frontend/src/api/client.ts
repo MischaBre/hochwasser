@@ -9,7 +9,7 @@ type RequestConfig = {
   headers?: Record<string, string>
 }
 
-type ValidationIssue = {
+export type ValidationIssue = {
   loc?: Array<string | number>
   msg?: string
   type?: string

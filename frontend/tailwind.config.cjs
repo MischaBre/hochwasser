@@ -1,41 +1,44 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./index.html', './src/**/*.{vue,ts,tsx}'],
+  darkMode: ['class'],
   theme: {
     extend: {
       colors: {
-        ink: {
-          900: 'var(--ink-900)',
-          700: 'var(--ink-700)',
-          500: 'var(--ink-500)',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
         },
-        surface: {
-          100: 'var(--surface-100)',
-          200: 'var(--surface-200)',
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
-          500: 'var(--accent-500)',
-          600: 'var(--accent-600)',
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
         },
-        alert: {
-          500: 'var(--alert-500)',
-        },
-      },
-      fontFamily: {
-        body: ['var(--font-body)'],
-        heading: ['var(--font-heading)'],
-      },
-      boxShadow: {
-        soft: '0 14px 28px rgba(20, 53, 45, 0.1)',
-      },
-      keyframes: {
-        fadeInUp: {
-          '0%': { opacity: 0, transform: 'translateY(18px)' },
-          '100%': { opacity: 1, transform: 'translateY(0)' },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
         },
       },
-      animation: {
-        'fade-in-up': 'fadeInUp 450ms ease-out both',
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
       },
     },
   },

@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import Button from 'primevue/button'
-import Card from 'primevue/card'
-import InputText from 'primevue/inputtext'
-import Message from 'primevue/message'
-import Password from 'primevue/password'
+import Alert from '@/components/ui/alert/Alert.vue'
+import Button from '@/components/ui/button/Button.vue'
+import Card from '@/components/ui/card/Card.vue'
+import CardContent from '@/components/ui/card/CardContent.vue'
+import CardFooter from '@/components/ui/card/CardFooter.vue'
+import CardHeader from '@/components/ui/card/CardHeader.vue'
+import CardTitle from '@/components/ui/card/CardTitle.vue'
+import Input from '@/components/ui/input/Input.vue'
+import Label from '@/components/ui/label/Label.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -47,53 +51,38 @@ const submit = async () => {
 
 <template>
   <section class="mx-auto max-w-lg">
-    <Card class="glass-card rounded-2xl">
-      <template #title>
-        <h2 class="text-2xl font-semibold text-ink-900">Create your account</h2>
-      </template>
-      <template #content>
-        <form class="space-y-4" @submit.prevent="submit">
-          <span class="p-float-label block">
-            <InputText id="register-email" v-model="email" class="w-full" autocomplete="email" type="email" required />
-            <label for="register-email">Email</label>
-          </span>
+    <Card>
+      <CardHeader>
+        <CardTitle>Create your account</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form class="space-y-5" @submit.prevent="submit">
+          <div class="space-y-2">
+            <Label for="register-email">Email</Label>
+            <Input id="register-email" v-model="email" autocomplete="email" type="email" required />
+          </div>
 
-          <span class="p-float-label block">
-            <Password
-              id="register-password"
-              v-model="password"
-              class="w-full"
-              input-class="w-full"
-              autocomplete="new-password"
-              toggle-mask
-              required
-            />
-            <label for="register-password">Password</label>
-          </span>
+          <div class="space-y-2">
+            <Label for="register-password">Password</Label>
+            <Input id="register-password" v-model="password" autocomplete="new-password" type="password" required />
+          </div>
 
-          <span class="p-float-label block">
-            <Password
-              id="register-password-confirm"
-              v-model="confirmPassword"
-              class="w-full"
-              input-class="w-full"
-              :feedback="false"
-              autocomplete="new-password"
-              toggle-mask
-              required
-            />
-            <label for="register-password-confirm">Confirm password</label>
-          </span>
+          <div class="space-y-2">
+            <Label for="register-password-confirm">Confirm password</Label>
+            <Input id="register-password-confirm" v-model="confirmPassword" autocomplete="new-password" type="password" required />
+          </div>
 
-          <Message v-if="successMessage" severity="success" :closable="false">{{ successMessage }}</Message>
-          <Message v-if="errorMessage" severity="error" :closable="false">{{ errorMessage }}</Message>
+          <Alert v-if="successMessage">{{ successMessage }}</Alert>
+          <Alert v-if="errorMessage" variant="destructive">{{ errorMessage }}</Alert>
 
-          <Button class="w-full" type="submit" label="Create account" icon="pi pi-user-plus" :loading="authStore.loading" />
+          <Button class="w-full" type="submit" :disabled="authStore.loading">
+            {{ authStore.loading ? 'Creating account...' : 'Create account' }}
+          </Button>
         </form>
-      </template>
-      <template #footer>
-        <Button label="Back to login" icon="pi pi-arrow-left" outlined @click="goLogin" />
-      </template>
+      </CardContent>
+      <CardFooter>
+        <Button variant="outline" @click="goLogin">Back to login</Button>
+      </CardFooter>
     </Card>
   </section>
 </template>

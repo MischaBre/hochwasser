@@ -33,7 +33,7 @@ help:
 	@printf "  frontend-build Build frontend production bundle\n"
 	@printf "  frontend-preview Preview frontend production build\n"
 	@printf "  frontend-check Run frontend build checks\n"
-	@printf "  dev-full       Start backend dev stack and frontend dev server\n"
+	@printf "  dev-full       Start full dev stack via docker compose\n"
 	@printf "  prod-ready     Run production readiness checks\n"
 
 install:
@@ -120,7 +120,7 @@ frontend-preview:
 
 frontend-check: frontend-build
 
-dev-full: up-dev frontend-install
-	$(NPM) --prefix frontend run dev
+dev-full: up-dev
+	@printf "Dev stack is running. Open http://localhost:5173\n"
 
 prod-ready: check i18n-check compose-config
