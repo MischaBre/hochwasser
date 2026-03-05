@@ -242,6 +242,7 @@ const submit = async () => {
                   id="station-uuid"
                   v-model="form.station_uuid"
                   class="pl-9"
+                  placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000"
                   required
                   @blur="markTouched('station_uuid')"
                   @input="clearServerError('station_uuid')"
@@ -293,6 +294,8 @@ const submit = async () => {
                   id="alert-recipient"
                   v-model="form.alert_recipient"
                   class="pl-9"
+                  type="email"
+                  placeholder="alerts@example.com"
                   required
                   @blur="markTouched('alert_recipient')"
                   @input="clearServerError('alert_recipient')"
@@ -310,11 +313,13 @@ const submit = async () => {
                   v-model="form.recipients"
                   rows="3"
                   class="pl-9"
+                  placeholder="alice@example.com, bob@example.com"
                   required
                   @blur="markTouched('recipients')"
                   @input="clearServerError('recipients')"
                 />
               </div>
+              <p class="text-xs text-muted-foreground">Separate addresses with commas, semicolons, or new lines.</p>
               <p v-if="getFieldError('recipients')" class="text-sm text-destructive">{{ getFieldError('recipients') }}</p>
             </div>
 
@@ -326,11 +331,13 @@ const submit = async () => {
                   id="schedule-cron"
                   v-model="form.schedule_cron"
                   class="pl-9"
+                  placeholder="*/15 * * * *"
                   required
                   @blur="markTouched('schedule_cron')"
                   @input="clearServerError('schedule_cron')"
                 />
               </div>
+              <p class="text-xs text-muted-foreground">Cron format: minute hour day month weekday.</p>
               <p v-if="getFieldError('schedule_cron')" class="text-sm text-destructive">{{ getFieldError('schedule_cron') }}</p>
             </div>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Eye, EyeOff } from 'lucide-vue-next'
 import Alert from '@/components/ui/alert/Alert.vue'
 import Button from '@/components/ui/button/Button.vue'
 import Card from '@/components/ui/card/Card.vue'
@@ -18,6 +19,7 @@ const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
+const passwordVisible = ref(false)
 const errorMessage = ref('')
 
 const redirectPath = computed(() => (route.query.redirect as string) || '/')
@@ -50,7 +52,25 @@ const submit = async () => {
 
           <div class="space-y-2">
             <Label for="password">Password</Label>
-            <Input id="password" v-model="password" autocomplete="current-password" type="password" required />
+            <div class="relative">
+              <Input
+                id="password"
+                v-model="password"
+                autocomplete="current-password"
+                :type="passwordVisible ? 'text' : 'password'"
+                class="pr-11"
+                required
+              />
+              <button
+                type="button"
+                class="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                :aria-label="passwordVisible ? 'Hide password' : 'Show password'"
+                @click="passwordVisible = !passwordVisible"
+              >
+                <EyeOff v-if="passwordVisible" class="h-4 w-4" />
+                <Eye v-else class="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <Alert v-if="errorMessage" variant="destructive">{{ errorMessage }}</Alert>
