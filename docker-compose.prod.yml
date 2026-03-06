@@ -1,0 +1,80 @@
+services:
+  hochwasser-alert:
+    profiles:
+      - prod
+    ports: []
+
+  hochwasser-api:
+    profiles:
+      - prod
+    ports: []
+
+  hochwasser-frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+    container_name: hochwasser-frontend-prod
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    profiles:
+      - prod
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      hochwasser-api:
+        condition: service_started
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    container_name: hochwasser-caddy
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    profiles:
+      - prod
+    depends_on:
+      hochwasser-api:
+        condition: service_started
+      hochwasser-frontend-prod:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_APP_DOMAIN: ${PUBLIC_APP_DOMAIN}
+      PUBLIC_API_DOMAIN: ${PUBLIC_API_DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,9 @@
+{$PUBLIC_APP_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy hochwasser-frontend-prod:8080
+}
+
+{$PUBLIC_API_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy hochwasser-api:8080
+}

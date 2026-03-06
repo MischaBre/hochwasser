@@ -31,8 +31,9 @@ It checks:
 docker compose up -d --build
 ```
 3. Profiles:
-   - `COMPOSE_PROFILES=dev`: starts local Postgres, no watchdog
-   - `COMPOSE_PROFILES=prod`: starts watchdog, no local Postgres
+   - `COMPOSE_PROFILES=dev`: starts local Postgres and frontend dev server, no watchdog
+   - `COMPOSE_PROFILES=prod`: starts watchdog with external DB (base compose)
+   - Public VM stack uses base + prod override: `docker-compose.yml` + `docker-compose.prod.yml`
 4. Flyway (`hochwasser-flyway`) applies SQL migrations from `sql/migrations` before the alert service starts.
 5. Frontend (`hochwasser-frontend`) starts in the `dev` profile on `http://localhost:5173`.
 6. Insert at least one row into `public.alert_jobs`.
@@ -103,6 +104,8 @@ This runs linting, format checks, tests, gettext catalog freshness checks, and d
 
 Most values are set in `docker-compose.yml`; SMTP settings are read from `.env`.
 
+For public VM deployment with TLS and host routing, see `.env.prod.example` and run with both compose files.
+
 - `PROVIDER`: currently only `pegelonline`
 - `COMPOSE_PROFILES`: use `dev` for local Postgres (no watchdog) or `prod` for watchdog with external DB
 - `DATABASE_URL`: Postgres connection string used by `hochwasser-alert` engine
@@ -141,6 +144,11 @@ Frontend settings:
 - `VITE_SUPABASE_URL`: Supabase project URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key used by browser auth
 
+Public runtime settings:
+
+- `PUBLIC_APP_DOMAIN`: public frontend domain for Caddy routing (for example `app.example.com`)
+- `PUBLIC_API_DOMAIN`: public API domain for Caddy routing (for example `api.example.com`)
+
 ## Frontend (Local)
 
 The frontend app lives in `frontend/` and is included in `docker-compose` via the `hochwasser-frontend` service.
@@ -155,6 +163,73 @@ Then open:
 
 - Frontend: `http://localhost:5173`
 - API: `http://localhost:8080`
+
+## Public VM Deployment (HTTPS)
+
+Use this mode when deploying the app publicly on a VM.
+
+What this starts:
+
+- `hochwasser-alert`
+- `hochwasser-api`
+- `hochwasser-frontend-prod` (static built frontend)
+- `caddy` (TLS + reverse proxy)
+- `container-watchdog`
+
+What this does not start:
+
+- local `postgres` (use external DB, recommended Supabase)
+- frontend Vite dev server
+
+1. Copy production env template and fill real values:
+
+```bash
+cp .env.prod.example .env
+```
+
+2. Set required domains and CORS:
+
+- `PUBLIC_APP_DOMAIN`, `PUBLIC_API_DOMAIN`
+- `API_CORS_ALLOW_ORIGINS=https://<PUBLIC_APP_DOMAIN>`
+
+3. Start the public stack:
+
+```bash
+COMPOSE_PROFILES=prod docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Or use the deployment helper (validates required env vars and runs smoke checks):
+
+```bash
+make deploy-public
+```
+
+4. Smoke checks:
+
+```bash
+curl -fsS "https://<PUBLIC_API_DOMAIN>/health/live"
+curl -fsS "https://<PUBLIC_API_DOMAIN>/health/ready"
+curl -fsS "https://<PUBLIC_APP_DOMAIN>"
+```
+
+5. Follow logs:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f caddy hochwasser-api hochwasser-alert
+```
+
+Alternative smoke checks via Make target:
+
+```bash
+make smoke-public
+```
+
+Notes:
+
+- Caddy automatically provisions and renews Let's Encrypt certificates for valid public domains.
+- Expose only ports `80` and `443` publicly on the VM.
+- Keep secrets in VM `.env` only; never commit real credentials.
+- In public mode, frontend and Caddy run with dropped Linux capabilities and read-only filesystems.
 
 If you run frontend outside Docker, use:
 
