@@ -1,4 +1,5 @@
 import { env } from '@/lib/env'
+import { i18n } from '@/plugins/i18n'
 import { useAuthStore } from '@/stores/auth'
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE'
@@ -44,7 +45,7 @@ const parseErrorPayload = async (response: Response): Promise<ApiErrorPayload> =
 
 const getErrorMessage = (status: number, payload: ApiErrorPayload): string => {
   if (Array.isArray(payload.detail)) {
-    return 'Validation failed. Please review your input.'
+    return i18n.global.t('api.validationFailed')
   }
 
   if (typeof payload.detail === 'string' && payload.detail.length > 0) {
@@ -52,14 +53,14 @@ const getErrorMessage = (status: number, payload: ApiErrorPayload): string => {
   }
 
   if (status === 401) {
-    return 'Authentication required. Please sign in again.'
+    return i18n.global.t('api.authRequired')
   }
 
   if (status === 403) {
-    return 'You are not allowed to perform this action.'
+    return i18n.global.t('api.actionNotAllowed')
   }
 
-  return `API request failed with status ${status}`
+  return i18n.global.t('api.requestFailedStatus', { status })
 }
 
 const handleHttpError = async (response: Response): Promise<never> => {

@@ -1,4 +1,5 @@
 import type { JobCreatePayload } from '@/features/jobs/types'
+import { i18n } from '@/plugins/i18n'
 
 export type JobFormState = {
   name: string
@@ -65,57 +66,57 @@ export const validateJobForm = (state: JobFormState): JobFormErrors => {
   const invalidRecipient = recipients.find((email) => !isValidEmail(email))
 
   if (!name) {
-    errors.name = 'Name is required.'
+    errors.name = i18n.global.t('validation.nameRequired')
   } else if (name.length > 120) {
-    errors.name = 'Name must be 120 characters or fewer.'
+    errors.name = i18n.global.t('validation.nameTooLong')
   }
 
   if (!stationUuid) {
-    errors.station_uuid = 'Station UUID is required.'
+    errors.station_uuid = i18n.global.t('validation.stationUuidRequired')
   } else if (stationUuid.length > 120) {
-    errors.station_uuid = 'Station UUID must be 120 characters or fewer.'
+    errors.station_uuid = i18n.global.t('validation.stationUuidTooLong')
   }
 
   if (!alertRecipient) {
-    errors.alert_recipient = 'Alert recipient is required.'
+    errors.alert_recipient = i18n.global.t('validation.alertRecipientRequired')
   } else if (alertRecipient.length > 254) {
-    errors.alert_recipient = 'Alert recipient must be 254 characters or fewer.'
+    errors.alert_recipient = i18n.global.t('validation.alertRecipientTooLong')
   } else if (!isValidEmail(alertRecipient)) {
-    errors.alert_recipient = 'Alert recipient must be a valid email address.'
+    errors.alert_recipient = i18n.global.t('validation.alertRecipientInvalid')
   }
 
   if (recipients.length < 1) {
-    errors.recipients = 'At least one recipient is required.'
+    errors.recipients = i18n.global.t('validation.recipientsRequired')
   } else if (recipients.length > 25) {
-    errors.recipients = 'You can provide at most 25 recipients.'
+    errors.recipients = i18n.global.t('validation.recipientsTooMany')
   } else if (invalidRecipient) {
-    errors.recipients = `Invalid recipient address: ${invalidRecipient}`
+    errors.recipients = i18n.global.t('validation.recipientsInvalidAddress', { email: invalidRecipient })
   }
 
   if (!['de', 'en'].includes(state.locale)) {
-    errors.locale = 'Locale must be either German or English.'
+    errors.locale = i18n.global.t('validation.localeUnsupported')
   }
 
   if (!scheduleCron) {
-    errors.schedule_cron = 'Schedule is required.'
+    errors.schedule_cron = i18n.global.t('validation.scheduleRequired')
   } else if (!isValidCron(scheduleCron)) {
-    errors.schedule_cron = 'Schedule must be a valid 5-field crontab expression.'
+    errors.schedule_cron = i18n.global.t('validation.scheduleInvalid')
   }
 
   const limitRaw = state.limit_cm.trim()
   if (!limitRaw) {
-    errors.limit_cm = 'Limit is required.'
+    errors.limit_cm = i18n.global.t('validation.limitRequired')
     return errors
   }
 
   if (!/^\d+$/.test(limitRaw)) {
-    errors.limit_cm = 'Limit must be a whole number between 0 and 100000.'
+    errors.limit_cm = i18n.global.t('validation.limitWholeNumber')
     return errors
   }
 
   const limitCm = Number(limitRaw)
   if (limitCm < 0 || limitCm >= 100000) {
-    errors.limit_cm = 'Limit must be between 0 and 100000.'
+    errors.limit_cm = i18n.global.t('validation.limitRange')
   }
 
   return errors

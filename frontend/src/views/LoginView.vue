@@ -11,11 +11,13 @@ import Input from '@/components/ui/input/Input.vue'
 import Label from '@/components/ui/label/Label.vue'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const email = ref('')
 const password = ref('')
@@ -31,7 +33,7 @@ const submit = async () => {
     await authStore.signIn(email.value.trim(), password.value)
     await router.push(redirectPath.value)
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Login failed. Please try again.'
+    const message = error instanceof Error ? error.message : t('auth.login.failedFallback')
     errorMessage.value = message
   }
 }
@@ -41,17 +43,17 @@ const submit = async () => {
   <section class="mx-auto max-w-lg">
     <Card>
       <CardHeader>
-        <CardTitle>Welcome back</CardTitle>
+        <CardTitle>{{ t('auth.login.title') }}</CardTitle>
       </CardHeader>
       <CardContent>
         <form class="space-y-5" @submit.prevent="submit">
           <div class="space-y-2">
-            <Label for="email">Email</Label>
+            <Label for="email">{{ t('auth.login.email') }}</Label>
             <Input id="email" v-model="email" autocomplete="email" type="email" required />
           </div>
 
           <div class="space-y-2">
-            <Label for="password">Password</Label>
+            <Label for="password">{{ t('auth.login.password') }}</Label>
             <div class="relative">
               <Input
                 id="password"
@@ -64,7 +66,7 @@ const submit = async () => {
               <button
                 type="button"
                 class="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
-                :aria-label="passwordVisible ? 'Hide password' : 'Show password'"
+                :aria-label="passwordVisible ? t('auth.login.hidePassword') : t('auth.login.showPassword')"
                 @click="passwordVisible = !passwordVisible"
               >
                 <EyeOff v-if="passwordVisible" class="h-4 w-4" />
@@ -76,14 +78,14 @@ const submit = async () => {
           <Alert v-if="errorMessage" variant="destructive">{{ errorMessage }}</Alert>
 
           <Button class="w-full" type="submit" :disabled="authStore.loading">
-            {{ authStore.loading ? 'Signing in...' : 'Sign in' }}
+            {{ authStore.loading ? t('auth.login.submitting') : t('auth.login.submit') }}
           </Button>
         </form>
       </CardContent>
       <CardFooter>
         <div class="mt-1 text-sm text-muted-foreground">
-          New here?
-          <RouterLink class="font-semibold text-primary hover:underline" to="/register">Create account</RouterLink>
+          {{ t('auth.login.newHere') }}
+          <RouterLink class="font-semibold text-primary hover:underline" to="/register">{{ t('auth.login.createAccount') }}</RouterLink>
         </div>
       </CardFooter>
     </Card>

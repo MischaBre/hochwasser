@@ -11,10 +11,12 @@ import Input from '@/components/ui/input/Input.vue'
 import Label from '@/components/ui/label/Label.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { t } = useI18n()
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -32,7 +34,7 @@ const submit = async () => {
   successMessage.value = ''
 
   if (password.value !== confirmPassword.value) {
-    errorMessage.value = 'Passwords do not match.'
+    errorMessage.value = t('auth.register.passwordsMismatch')
     return
   }
 
@@ -44,9 +46,9 @@ const submit = async () => {
       return
     }
 
-    successMessage.value = 'Account created. Check your inbox to confirm your email, then sign in.'
+    successMessage.value = t('auth.register.createdCheckInbox')
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Registration failed. Please try again.'
+    const message = error instanceof Error ? error.message : t('auth.register.failedFallback')
     errorMessage.value = message
   }
 }
@@ -56,17 +58,17 @@ const submit = async () => {
   <section class="mx-auto max-w-lg">
     <Card>
       <CardHeader>
-        <CardTitle>Create your account</CardTitle>
+        <CardTitle>{{ t('auth.register.title') }}</CardTitle>
       </CardHeader>
       <CardContent>
         <form class="space-y-5" @submit.prevent="submit">
           <div class="space-y-2">
-            <Label for="register-email">Email</Label>
+            <Label for="register-email">{{ t('auth.register.email') }}</Label>
             <Input id="register-email" v-model="email" autocomplete="email" type="email" required />
           </div>
 
           <div class="space-y-2">
-            <Label for="register-password">Password</Label>
+            <Label for="register-password">{{ t('auth.register.password') }}</Label>
             <div class="relative">
               <Input
                 id="register-password"
@@ -79,7 +81,7 @@ const submit = async () => {
               <button
                 type="button"
                 class="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
-                :aria-label="passwordVisible ? 'Hide password' : 'Show password'"
+                :aria-label="passwordVisible ? t('auth.register.hidePassword') : t('auth.register.showPassword')"
                 @click="passwordVisible = !passwordVisible"
               >
                 <EyeOff v-if="passwordVisible" class="h-4 w-4" />
@@ -89,7 +91,7 @@ const submit = async () => {
           </div>
 
           <div class="space-y-2">
-            <Label for="register-password-confirm">Confirm password</Label>
+            <Label for="register-password-confirm">{{ t('auth.register.confirmPassword') }}</Label>
             <div class="relative">
               <Input
                 id="register-password-confirm"
@@ -102,7 +104,7 @@ const submit = async () => {
               <button
                 type="button"
                 class="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
-                :aria-label="confirmPasswordVisible ? 'Hide confirm password' : 'Show confirm password'"
+                :aria-label="confirmPasswordVisible ? t('auth.register.hideConfirmPassword') : t('auth.register.showConfirmPassword')"
                 @click="confirmPasswordVisible = !confirmPasswordVisible"
               >
                 <EyeOff v-if="confirmPasswordVisible" class="h-4 w-4" />
@@ -115,12 +117,12 @@ const submit = async () => {
           <Alert v-if="errorMessage" variant="destructive">{{ errorMessage }}</Alert>
 
           <Button class="w-full" type="submit" :disabled="authStore.loading">
-            {{ authStore.loading ? 'Creating account...' : 'Create account' }}
+            {{ authStore.loading ? t('auth.register.submitting') : t('auth.register.submit') }}
           </Button>
         </form>
       </CardContent>
       <CardFooter>
-        <Button variant="outline" @click="goLogin">Back to login</Button>
+        <Button variant="outline" @click="goLogin">{{ t('auth.register.backToLogin') }}</Button>
       </CardFooter>
     </Card>
   </section>

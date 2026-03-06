@@ -12,7 +12,9 @@ import Label from '@/components/ui/label/Label.vue'
 import Textarea from '@/components/ui/textarea/Textarea.vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ApiError, type ValidationIssue } from '@/api/client'
+import { useFormatters } from '@/composables/useFormatters'
 import { createJob, listJobs, updateJob } from '@/features/jobs/api'
 import { listStations } from '@/features/stations/api'
 import type { StationSummary } from '@/features/stations/types'
@@ -28,6 +30,8 @@ import {
 const route = useRoute()
 const router = useRouter()
 const queryClient = useQueryClient()
+const { t } = useI18n()
+const { formatNumber } = useFormatters()
 
 const jobUuid = computed(() => route.params.jobUuid as string | undefined)
 const isEditMode = computed(() => route.name === 'job-edit')
@@ -148,19 +152,19 @@ const formatStationLabel = (station: StationSummary): string => {
 
 const formatStationDetails = (station: StationSummary): string => {
   const water = station.water_longname || station.water_shortname || '-'
-  const km = station.km === null ? '-' : String(station.km)
+  const km = station.km === null ? '-' : formatNumber(station.km, { maximumFractionDigits: 2 })
   const coordinates = station.latitude === null || station.longitude === null
     ? '-'
-    : `${station.latitude}, ${station.longitude}`
+    : `${formatNumber(station.latitude, { maximumFractionDigits: 5 })}, ${formatNumber(station.longitude, { maximumFractionDigits: 5 })}`
 
   return [
-    `UUID: ${station.uuid}`,
-    `Long name: ${station.longname}`,
-    `Water: ${water}`,
-    `Agency: ${station.agency || '-'}`,
-    `Number: ${station.number || '-'}`,
-    `KM: ${km}`,
-    `Coords: ${coordinates}`,
+    t('jobForm.station.detailUuid', { value: station.uuid }),
+    t('jobForm.station.detailLongName', { value: station.longname }),
+    t('jobForm.station.detailWater', { value: water }),
+    t('jobForm.station.detailAgency', { value: station.agency || '-' }),
+    t('jobForm.station.detailNumber', { value: station.number || '-' }),
+    t('jobForm.station.detailKm', { value: km }),
+    t('jobForm.station.detailCoords', { value: coordinates }),
   ].join(' | ')
 }
 
@@ -415,18 +419,18 @@ const submit = async () => {
   <section>
     <Card>
       <CardHeader>
-        <CardTitle>{{ isEditMode ? 'Edit job' : 'Create job' }}</CardTitle>
+        <CardTitle>{{ isEditMode ? t('jobForm.editTitle') : t('jobForm.createTitle') }}</CardTitle>
       </CardHeader>
       <CardContent>
         <div class="space-y-4">
-          <Alert v-if="isEditMode && jobsQuery.isLoading.value">Loading job...</Alert>
-          <Alert v-if="isEditMode && !jobsQuery.isLoading.value && !currentJob" variant="destructive">Job not found.</Alert>
+          <Alert v-if="isEditMode && jobsQuery.isLoading.value">{{ t('jobForm.loadingJob') }}</Alert>
+          <Alert v-if="isEditMode && !jobsQuery.isLoading.value && !currentJob" variant="destructive">{{ t('jobForm.jobNotFound') }}</Alert>
           <Alert v-if="serverErrors.form" variant="destructive">{{ serverErrors.form }}</Alert>
           <Alert v-if="submitMutation.isError.value && submitError" variant="destructive">{{ submitError }}</Alert>
 
           <form class="grid gap-x-4 gap-y-6 md:grid-cols-2" @submit.prevent="submit">
             <div class="space-y-2">
-              <Label for="job-name">Name</Label>
+              <Label for="job-name">{{ t('jobForm.fields.name') }}</Label>
               <div class="relative">
                 <Tag class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input id="job-name" v-model="form.name" class="pl-9" required @blur="markTouched('name')" @input="clearServerError('name')" />
@@ -435,14 +439,14 @@ const submit = async () => {
             </div>
 
             <div class="space-y-2">
-              <Label for="station-search">Station</Label>
+              <Label for="station-search">{{ t('jobForm.fields.station') }}</Label>
               <div class="relative">
                 <MapPin class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="station-search"
                   :model-value="stationSearch"
                   class="pl-9"
-                  placeholder="Search stations by name, river, or UUID"
+                  :placeholder="t('jobForm.fields.stationPlaceholder')"
                   required
                   @focus="onStationSearchFocus"
                   @blur="onStationSearchBlur"
@@ -462,17 +466,17 @@ const submit = async () => {
                   <span class="text-sm font-medium">{{ formatStationLabel(station) }}</span>
                   <span class="text-xs text-muted-foreground">{{ formatStationDetails(station) }}</span>
                 </button>
-                <div v-if="stationsQuery.isLoading.value" class="px-3 py-2 text-xs text-muted-foreground">Loading stations...</div>
-                <div v-else-if="showNoStationMatches" class="px-3 py-2 text-xs text-muted-foreground">No matching station found.</div>
+                <div v-if="stationsQuery.isLoading.value" class="px-3 py-2 text-xs text-muted-foreground">{{ t('jobForm.station.loading') }}</div>
+                <div v-else-if="showNoStationMatches" class="px-3 py-2 text-xs text-muted-foreground">{{ t('jobForm.station.noMatch') }}</div>
               </div>
 
-              <p v-if="stationHint" class="text-xs text-muted-foreground">Selected: {{ stationHint }}</p>
+              <p v-if="stationHint" class="text-xs text-muted-foreground">{{ t('jobForm.station.selected', { value: stationHint }) }}</p>
               <p v-if="stationQueryError" class="text-xs text-destructive">{{ stationQueryError }}</p>
               <p v-if="getFieldError('station_uuid')" class="text-sm text-destructive">{{ getFieldError('station_uuid') }}</p>
             </div>
 
             <div class="space-y-2">
-              <Label for="limit-cm">Limit (cm)</Label>
+              <Label for="limit-cm">{{ t('jobForm.fields.limitCm') }}</Label>
               <div class="relative">
                 <Gauge class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -492,7 +496,7 @@ const submit = async () => {
             </div>
 
             <div class="space-y-2">
-              <Label for="locale">Locale</Label>
+              <Label for="locale">{{ t('jobForm.fields.locale') }}</Label>
               <div class="relative">
                 <Languages class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <select
@@ -502,15 +506,15 @@ const submit = async () => {
                   @blur="markTouched('locale')"
                   @change="clearServerError('locale')"
                 >
-                  <option value="de">German (de)</option>
-                  <option value="en">English (en)</option>
+                  <option value="de">{{ t('jobForm.fields.localeGerman') }}</option>
+                  <option value="en">{{ t('jobForm.fields.localeEnglish') }}</option>
                 </select>
               </div>
               <p v-if="getFieldError('locale')" class="text-sm text-destructive">{{ getFieldError('locale') }}</p>
             </div>
 
             <div class="space-y-2 md:col-span-2">
-              <Label for="alert-recipient">Alert recipient</Label>
+              <Label for="alert-recipient">{{ t('jobForm.fields.alertRecipient') }}</Label>
               <div class="relative">
                 <Send class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -518,7 +522,7 @@ const submit = async () => {
                   v-model="form.alert_recipient"
                   class="pl-9"
                   type="email"
-                  placeholder="alerts@example.com"
+                  :placeholder="t('jobForm.fields.alertRecipientPlaceholder')"
                   required
                   @blur="markTouched('alert_recipient')"
                   @input="clearServerError('alert_recipient')"
@@ -528,7 +532,7 @@ const submit = async () => {
             </div>
 
             <div class="space-y-2 md:col-span-2">
-              <Label for="recipients">Recipients (comma or newline separated)</Label>
+              <Label for="recipients">{{ t('jobForm.fields.recipients') }}</Label>
               <div class="relative">
                 <Users class="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Textarea
@@ -536,52 +540,52 @@ const submit = async () => {
                   v-model="form.recipients"
                   rows="3"
                   class="pl-9"
-                  placeholder="alice@example.com, bob@example.com"
+                  :placeholder="t('jobForm.fields.recipientsPlaceholder')"
                   required
                   @blur="markTouched('recipients')"
                   @input="clearServerError('recipients')"
                 />
               </div>
-              <p class="text-xs text-muted-foreground">Separate addresses with commas, semicolons, or new lines.</p>
+              <p class="text-xs text-muted-foreground">{{ t('jobForm.fields.recipientsHint') }}</p>
               <p v-if="getFieldError('recipients')" class="text-sm text-destructive">{{ getFieldError('recipients') }}</p>
             </div>
 
             <div class="space-y-2 md:col-span-2">
-              <Label for="schedule-cron">Schedule cron (5 fields)</Label>
+              <Label for="schedule-cron">{{ t('jobForm.fields.scheduleCron') }}</Label>
               <div class="relative">
                 <Clock3 class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="schedule-cron"
                   v-model="form.schedule_cron"
                   class="pl-9"
-                  placeholder="*/15 * * * *"
+                  :placeholder="t('jobForm.fields.scheduleCronPlaceholder')"
                   required
                   @blur="markTouched('schedule_cron')"
                   @input="clearServerError('schedule_cron')"
                 />
               </div>
-              <p class="text-xs text-muted-foreground">Cron format: minute hour day month weekday.</p>
+              <p class="text-xs text-muted-foreground">{{ t('jobForm.fields.scheduleCronHint') }}</p>
               <p v-if="getFieldError('schedule_cron')" class="text-sm text-destructive">{{ getFieldError('schedule_cron') }}</p>
             </div>
 
             <div class="md:col-span-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <div class="flex items-center gap-2">
                 <input id="repeat-alerts" v-model="form.repeat_alerts_on_check" type="checkbox" class="h-4 w-4 rounded border-input" />
-                <Label for="repeat-alerts">Repeat alerts on check</Label>
+                <Label for="repeat-alerts">{{ t('jobForm.fields.repeatAlertsOnCheck') }}</Label>
               </div>
               <div v-if="isEditMode" class="flex items-center gap-2">
                 <input id="job-enabled" v-model="form.enabled" type="checkbox" class="h-4 w-4 rounded border-input" />
-                <Label for="job-enabled">Enabled</Label>
+                <Label for="job-enabled">{{ t('jobForm.fields.enabled') }}</Label>
               </div>
             </div>
 
             <div class="md:col-span-2 flex items-center justify-end gap-2 pt-2">
-              <Button variant="ghost" @click="router.push({ name: 'jobs' })">Cancel</Button>
+              <Button variant="ghost" @click="router.push({ name: 'jobs' })">{{ t('jobForm.actions.cancel') }}</Button>
               <Button
                 type="submit"
                 :disabled="submitMutation.isPending.value || hasJobFormErrors(clientErrors) || (isEditMode && !currentJob)"
               >
-                {{ submitMutation.isPending.value ? 'Saving...' : (isEditMode ? 'Save changes' : 'Create job') }}
+                {{ submitMutation.isPending.value ? t('jobForm.actions.saving') : (isEditMode ? t('jobForm.actions.saveChanges') : t('jobForm.actions.saveCreate')) }}
               </Button>
             </div>
           </form>
