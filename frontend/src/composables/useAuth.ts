@@ -9,7 +9,7 @@ export const useAuth = () => {
 
   const signOut = async () => {
     await authStore.signOut()
-    router.push('/login')
+    router.push('/')
   }
 
   return {

@@ -23,3 +23,8 @@ export type ListStationsParams = {
   offset?: number
   uuids?: string[]
 }
+
+export type StationMeasurement = {
+  timestamp: string
+  value: number
+}

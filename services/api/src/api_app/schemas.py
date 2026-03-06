@@ -196,6 +196,11 @@ class StationListResponse(BaseModel):
     offset: int
 
 
+class StationMeasurementResponse(BaseModel):
+    timestamp: str
+    value: float
+
+
 class OrganizationMemberResponse(BaseModel):
     user_id: UUID
     role: Literal["admin", "member"]

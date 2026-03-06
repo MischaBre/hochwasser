@@ -1,73 +1,90 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import AppShell from '@/layouts/AppShell.vue'
-import DashboardView from '@/views/DashboardView.vue'
-import JobDetailsView from '@/views/JobDetailsView.vue'
-import JobFormView from '@/views/JobFormView.vue'
-import JobsListView from '@/views/JobsListView.vue'
-import LoginView from '@/views/LoginView.vue'
-import NotFoundView from '@/views/NotFoundView.vue'
-import RegisterView from '@/views/RegisterView.vue'
-import { authGuard } from '@/router/guards'
+import { createRouter, createWebHistory } from "vue-router";
+import AppShell from "@/layouts/AppShell.vue";
+import DashboardView from "@/views/DashboardView.vue";
+import JobDetailsView from "@/views/JobDetailsView.vue";
+import JobFormView from "@/views/JobFormView.vue";
+import JobsListView from "@/views/JobsListView.vue";
+import ImprintView from "@/views/ImprintView.vue";
+import LandingView from "@/views/LandingView.vue";
+import NotFoundView from "@/views/NotFoundView.vue";
+import PrivacyPolicyView from "@/views/PrivacyPolicyView.vue";
+import RegisterView from "@/views/RegisterView.vue";
+import { authGuard } from "@/router/guards";
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
-      path: '/',
+      path: "/",
+      name: "landing",
+      component: LandingView,
+    },
+    {
+      path: "/app",
       component: AppShell,
       children: [
         {
-          path: '',
-          name: 'dashboard',
+          path: "",
+          name: "dashboard",
           component: DashboardView,
           meta: { requiresAuth: true },
         },
         {
-          path: 'jobs',
-          name: 'jobs',
+          path: "jobs",
+          name: "jobs",
           component: JobsListView,
           meta: { requiresAuth: true },
         },
         {
-          path: 'jobs/new',
-          name: 'job-create',
+          path: "jobs/new",
+          name: "job-create",
           component: JobFormView,
           meta: { requiresAuth: true },
         },
         {
-          path: 'jobs/:jobUuid/edit',
-          name: 'job-edit',
+          path: "jobs/:jobUuid/edit",
+          name: "job-edit",
           component: JobFormView,
           meta: { requiresAuth: true },
         },
         {
-          path: 'jobs/:jobUuid',
-          name: 'job-details',
+          path: "jobs/:jobUuid",
+          name: "job-details",
           component: JobDetailsView,
           meta: { requiresAuth: true },
         },
       ],
     },
     {
-      path: '/login',
-      name: 'login',
-      component: LoginView,
+      path: "/login",
+      name: "login",
+      component: LandingView,
       meta: { guestOnly: true },
     },
     {
-      path: '/register',
-      name: 'register',
+      path: "/impressum",
+      name: "impressum",
+      component: ImprintView,
+    },
+    {
+      path: "/datenschutz",
+      name: "privacy",
+      component: PrivacyPolicyView,
+    },
+    {
+      path: "/register",
+      name: "register",
       component: RegisterView,
       meta: { guestOnly: true },
     },
     {
-      path: '/:pathMatch(.*)*',
-      name: 'not-found',
+      path: "/:pathMatch(.*)*",
+      name: "not-found",
       component: NotFoundView,
     },
   ],
-})
+});
 
-router.beforeEach(authGuard)
+router.beforeEach(authGuard);
 
-export default router
+export default router;

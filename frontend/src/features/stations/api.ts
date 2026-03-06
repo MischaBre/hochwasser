@@ -1,5 +1,9 @@
 import { apiRequest } from '@/api/client'
-import type { ListStationsParams, StationListResponse } from '@/features/stations/types'
+import type {
+  ListStationsParams,
+  StationListResponse,
+  StationMeasurement,
+} from '@/features/stations/types'
 
 const toQuery = (params: ListStationsParams): string => {
   const query = new URLSearchParams()
@@ -27,4 +31,17 @@ const toQuery = (params: ListStationsParams): string => {
 
 export const listStations = (params: ListStationsParams = {}): Promise<StationListResponse> => {
   return apiRequest<StationListResponse>(`/v1/stations${toQuery(params)}`)
+}
+
+export const listStationMeasurements = (
+  stationUuid: string,
+  start: string = 'P3D',
+): Promise<StationMeasurement[]> => {
+  const query = new URLSearchParams()
+  if (start.trim()) {
+    query.set('start', start.trim())
+  }
+  const queryString = query.toString()
+  const suffix = queryString ? `?${queryString}` : ''
+  return apiRequest<StationMeasurement[]>(`/v1/stations/${encodeURIComponent(stationUuid)}/measurements${suffix}`)
 }

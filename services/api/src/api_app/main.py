@@ -45,9 +45,10 @@ from api_app.schemas import (
     OutboxEntryResponse,
     OutboxListResponse,
     StationListResponse,
+    StationMeasurementResponse,
     StationSummaryResponse,
 )
-from api_app.stations import list_stations
+from api_app.stations import list_station_measurements, list_stations
 
 app = FastAPI(title="Hochwasser API", version="0.1.0")
 
@@ -160,6 +161,20 @@ def get_stations(
         limit=limit,
         offset=offset,
     )
+
+
+@app.get(
+    "/v1/stations/{station_uuid}/measurements",
+    response_model=list[StationMeasurementResponse],
+)
+def get_station_measurements(
+    station_uuid: str,
+    actor: ActorDep,
+    start: str = Query(default="P3D", max_length=32),
+) -> list[StationMeasurementResponse]:
+    del actor
+    rows = list_station_measurements(station_uuid=station_uuid, start=start)
+    return [StationMeasurementResponse(**row.__dict__) for row in rows]
 
 
 @app.post("/v1/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
