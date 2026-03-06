@@ -39,9 +39,9 @@ Build a frontend for user registration, login, and self-service job management o
 - Vue Router
 - Pinia + Vue Query (for shared state and API state/caching)
 - Tailwind CSS
-- PrimeVue component library
+- shadcn-vue style UI primitives (local `components/ui` on Tailwind)
 - Supabase JS client for auth
-- Form validation with VeeValidate + Zod (or lightweight schema-first custom validation)
+- Lightweight schema-aligned custom validation with field-level client/server mapping
 
 ## Architecture
 - `frontend/` (new app)
@@ -54,56 +54,77 @@ Build a frontend for user registration, login, and self-service job management o
 - Environment variables:
   - `VITE_API_BASE_URL` (e.g. `http://localhost:8080`)
   - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
+  - `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+## Current Status
+- Phase 1 complete.
+- Phase 2 complete.
+- Phase 3 complete.
+- Phase 4 complete.
+- Phase 5 complete.
+- Phase 6 complete.
+- Phase 7 deferred (post-MVP hardening).
+- Phase 8 in progress.
 
 ## Delivery Phases
 
 ### Phase 1: Frontend Bootstrap
-- Initialize Vite + Vue + TypeScript app.
-- Add Vue Router, base layout, auth composables, and route guards.
-- Configure Tailwind CSS tokens/utilities and base design primitives.
-- Install and configure PrimeVue theme/components integrated with Tailwind utility classes.
-- Add `.env.example` for frontend variables.
+- [x] Initialize Vite + Vue + TypeScript app.
+- [x] Add Vue Router, base layout, auth composables, and route guards.
+- [x] Configure Tailwind CSS tokens/utilities and base design primitives.
+- [x] Establish shared UI component primitives under `frontend/src/components/ui`.
+- [x] Add `.env.example` for frontend variables.
 
 ### Phase 2: Authentication
-- Implement register/login forms via Supabase Auth.
-- Implement auth state listener and token retrieval.
-- Protect app routes; redirect unauthenticated users to login.
+- [x] Implement register/login forms via Supabase Auth.
+- [x] Implement auth state listener and token retrieval.
+- [x] Protect app routes; redirect unauthenticated users to login.
 
 ### Phase 3: API Integration
-- Build API client that attaches JWT from Supabase session.
-- Implement global handling for `401`/`403` and validation errors.
-- Add `GET /v1/me` call on app load to confirm membership/role.
+- [x] Build API client that attaches JWT from Supabase session.
+- [x] Implement global handling for `401`/`403` and validation errors.
+- [x] Add `GET /v1/me` call on app load to confirm membership/role.
 
 ### Phase 4: Jobs Management UI
-- Jobs list page (`GET /v1/jobs`).
-- Create job form (`POST /v1/jobs`) with client-side validation aligned to backend schema.
-- Edit job form (`PATCH /v1/jobs/{job_uuid}`).
-- Delete action (`DELETE /v1/jobs/{job_uuid}` with optimistic UI refresh).
-- Job details:
+- [x] Jobs list page (`GET /v1/jobs`).
+- [x] Create job form (`POST /v1/jobs`) with client-side validation aligned to backend schema.
+- [x] Edit job form (`PATCH /v1/jobs/{job_uuid}`).
+- [x] Delete action (`DELETE /v1/jobs/{job_uuid}` with optimistic UI refresh).
+- [x] Job details:
   - Status panel (`/status`)
   - Outbox table with pagination (`/outbox?limit&offset`)
+- [x] Field-level validation UX in job form (inline errors per input + server validation issue mapping).
 
 ### Phase 5: UX Hardening
-- Loading, empty, and error states for all views.
-- Toasts/inline messages for success/failure.
-- Confirm dialogs for destructive actions.
-- Mobile-friendly responsive layout.
+- [x] Loading, empty, and error states for all views.
+- [x] Inline messages for success/failure and validation.
+- [x] Confirm dialogs for destructive actions.
+- [x] Mobile-friendly responsive layout.
 
 ### Phase 6: Local Dev + Deployment Integration
-- Add frontend service to `docker-compose.yml`.
-- Set `API_CORS_ALLOW_ORIGINS` to frontend origin(s).
-- Verify full local flow: register -> login -> create/edit/delete/view jobs.
-- Document run instructions in `README.md`.
+- [x] Add frontend service to `docker-compose.yml`.
+- [x] Set `API_CORS_ALLOW_ORIGINS` to frontend origin(s).
+- [x] Verify full local flow: register -> login -> create/edit/delete/view jobs.
+- [x] Document run instructions in `README.md`.
 
 ### Phase 7: Testing
-- Unit tests for auth and API client behavior.
-- Component tests for key forms and table states.
-- Optional E2E smoke flow:
+- [ ] Unit tests for auth and API client behavior.
+- [ ] Component tests for key forms and table states.
+- [ ] Use a dedicated integration test database via `API_TEST_DATABASE_URL` (no fallback to dev DB URLs).
+- [ ] Optional E2E smoke flow:
   - Login
   - Create job
   - Edit job
   - Delete job
+
+Testing is intentionally deferred while frontend delivery is in flow. Revisit Phase 7 in a later hardening stage.
+
+### Phase 8: Station Discovery And Enriched Job Context
+- [ ] Add API endpoint to fetch Pegelonline stations with search/filter and short-lived caching.
+- [ ] Replace manual `station_uuid` entry in job form with searchable station picker.
+- [ ] Keep UUID as the persisted value while showing human-readable station metadata in form.
+- [ ] Enrich jobs list/details with station name, water body, agency, and coordinates where available.
+- [ ] Evaluate map picker as optional follow-up after searchable dropdown baseline.
 
 ## Definition of Done
 - User can register and login from frontend.

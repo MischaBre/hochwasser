@@ -34,11 +34,12 @@ docker compose up -d --build
    - `COMPOSE_PROFILES=dev`: starts local Postgres, no watchdog
    - `COMPOSE_PROFILES=prod`: starts watchdog, no local Postgres
 4. Flyway (`hochwasser-flyway`) applies SQL migrations from `sql/migrations` before the alert service starts.
-5. Insert at least one row into `public.alert_jobs`.
-6. Edit non-secret values in `docker-compose.yml`:
+5. Frontend (`hochwasser-frontend`) starts in the `dev` profile on `http://localhost:5173`.
+6. Insert at least one row into `public.alert_jobs`.
+7. Edit non-secret values in `docker-compose.yml`:
    - `FORECAST_SERIES_SHORTNAME`
    - SMTP settings wiring
-7. Follow logs:
+8. Follow logs:
 
 ```bash
 docker compose logs -f
@@ -132,7 +133,41 @@ API settings:
 - `API_DEFAULT_ORG_ID`: single-org UUID used to scope all API operations
 - `API_INITIAL_ADMIN_USER_ID`: optional Supabase user UUID auto-assigned as admin on first request
 - `API_AUTO_PROVISION_MEMBERS`: auto-insert unknown authenticated users as org members (`true`/`false`)
-- `API_CORS_ALLOW_ORIGINS`: comma-separated allowed origins for browser calls
+- `API_CORS_ALLOW_ORIGINS`: comma-separated allowed origins for browser calls (for local frontend use `http://localhost:5173`)
+
+Frontend settings:
+
+- `VITE_API_BASE_URL`: API base URL consumed by Vite frontend (`http://localhost:8080` for local compose)
+- `VITE_SUPABASE_URL`: Supabase project URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key used by browser auth
+
+## Frontend (Local)
+
+The frontend app lives in `frontend/` and is included in `docker-compose` via the `hochwasser-frontend` service.
+
+With `COMPOSE_PROFILES=dev`, start everything with:
+
+```bash
+docker compose up -d --build
+```
+
+Then open:
+
+- Frontend: `http://localhost:5173`
+- API: `http://localhost:8080`
+
+If you run frontend outside Docker, use:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Environment source of truth:
+
+- Compose workflow (`docker compose ...`) reads `VITE_*` values from root `.env`.
+- Standalone frontend workflow (`npm --prefix frontend run dev`) reads `frontend/.env`.
 
 ### Database Roles And Grants
 

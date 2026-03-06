@@ -15,6 +15,7 @@ alert = [
   "matplotlib==3.10.8",
 ]
 api = [
+  "APScheduler==3.11.2",
   "fastapi==0.116.1",
   "PyJWT[crypto]==2.10.1",
   "uvicorn==0.35.0",
