@@ -65,6 +65,7 @@ Build a frontend for user registration, login, and self-service job management o
 - Phase 6 complete.
 - Phase 7 deferred (post-MVP hardening).
 - Phase 8 in progress.
+- Phase 9 planned (public VM rollout).
 
 ## Delivery Phases
 
@@ -125,6 +126,82 @@ Testing is intentionally deferred while frontend delivery is in flow. Revisit Ph
 - [ ] Keep UUID as the persisted value while showing human-readable station metadata in form.
 - [ ] Enrich jobs list/details with station name, water body, agency, and coordinates where available.
 - [ ] Evaluate map picker as optional follow-up after searchable dropdown baseline.
+
+### Phase 9: Public VM Deployment
+
+Deployment direction (recommended):
+
+- Keep Supabase managed for Postgres + Auth.
+- Run alert engine and API on one VM via Docker Compose.
+- Serve frontend as static production build (not Vite dev server).
+- Put a reverse proxy in front (Caddy recommended) for HTTPS and domain routing.
+- Restrict API CORS to real frontend domain(s) only.
+
+#### 9.1 Architecture And Runtime Topology
+- [ ] Finalize public domains:
+  - `app.<domain>` for frontend
+  - `api.<domain>` for API
+- [ ] Keep DB/Auth external in Supabase (no public DB port on VM).
+- [ ] Confirm Compose profile usage in production (`COMPOSE_PROFILES=prod`).
+
+#### 9.2 Frontend Production Serving
+- [ ] Add a production frontend image/container (multi-stage build + static server).
+- [ ] Remove production dependency on `npm run dev`.
+- [ ] Ensure `VITE_API_BASE_URL` points to `https://api.<domain>`.
+- [ ] Keep `hochwasser-frontend` dev-only for local workflow.
+
+#### 9.3 Reverse Proxy And TLS
+- [ ] Add reverse proxy service in production compose (Caddy preferred).
+- [ ] Route frontend and API by hostnames.
+- [ ] Enable automatic Let's Encrypt certificates.
+- [ ] Expose only `80/443` publicly.
+
+#### 9.4 Security Hardening
+- [ ] Tighten `API_CORS_ALLOW_ORIGINS` to production frontend origin(s).
+- [ ] Keep secrets only in VM `.env` (never in git).
+- [ ] Set strong non-default values for all credentials.
+- [ ] Configure VM firewall (`22`, `80`, `443` only).
+- [ ] Use SSH keys and disable password login where possible.
+
+#### 9.5 Operations And Reliability
+- [ ] Add a deployment runbook for first deploy, updates, and rollback.
+- [ ] Add uptime checks for `/health` and `/health/live`.
+- [ ] Define backup/restore expectations (Supabase backups + config backup).
+- [ ] Document log access and incident triage steps.
+
+#### 9.6 CI/CD And Release Workflow
+- [ ] Add a simple release path (manual script or GitHub Actions over SSH).
+- [ ] Deploy from tagged versions or protected `main` only.
+- [ ] Include `docker compose pull/build/up -d` and quick post-deploy smoke checks.
+
+#### 9.7 Legal Notice And Liability Clarification
+- [ ] Add a visible legal notice section in public docs and frontend footer/imprint page.
+- [ ] State clearly that station/water-level data is sourced from official public providers (for example Pegelonline) and is not owned by this project.
+- [ ] State clearly that this service is informational support only and does not replace official warnings, emergency alerts, or civil protection guidance.
+- [ ] State clearly that no guarantee is given for availability, correctness, completeness, timeliness, or alert delivery.
+- [ ] State clearly that operators/maintainers are not liable for damages caused by delayed, missing, or incorrect alerts.
+- [ ] Add jurisdiction-specific review item: have the final legal wording reviewed by qualified legal counsel before public launch.
+
+#### 9.8 Public Landing Page And Visual Theme
+- [ ] Add a public landing page (outside authenticated app views) explaining what the service does, who it is for, and how to get started.
+- [ ] Define and implement an intentional visual theme (typography, color tokens, spacing, icon style) that feels distinctive and trustworthy.
+- [ ] Add responsive hero, feature highlights, and clear CTA paths (login/register/status/docs).
+- [ ] Update browser metadata for public launch: final page title and favicon.
+- [ ] Favicon design direction: stylized Pegelmessstange in black/yellow palette (clean, recognizable at small sizes) with PNG plus `.ico` fallback.
+- [ ] Redesign authenticated dashboard landing view to focus on job overview cards instead of session/account blocks.
+- [ ] Show reduced key info per job card (station, limit, status, last update) with quick links to details/edit.
+- [ ] Add optional live Pegel trend chart per job card (or compact sparkline fallback) aligned with the alert email chart style.
+- [ ] Ensure the landing page links to legal notice/imprint and data source disclosure.
+- [ ] Validate accessibility basics (contrast, keyboard navigation, focus states, reduced-motion support).
+
+#### Phase 9 Exit Criteria
+- [ ] Public HTTPS frontend and API reachable by domain.
+- [ ] Auth works end-to-end from public frontend against public API.
+- [ ] Alert engine runs continuously with healthy status.
+- [ ] CORS is locked to intended origins.
+- [ ] Rollback procedure tested once.
+- [ ] Legal notice is published and reviewed.
+- [ ] Public landing page is live with final visual theme.
 
 ## Definition of Done
 - User can register and login from frontend.
