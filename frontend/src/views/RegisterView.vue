@@ -42,7 +42,7 @@ const submit = async () => {
     const data = await authStore.signUp(email.value.trim(), password.value)
 
     if (data.session) {
-      await router.push('/')
+      await router.push('/app')
       return
     }
 

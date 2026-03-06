@@ -4,26 +4,26 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 204 36% 97%;
+    --foreground: 204 29% 13%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 204 29% 13%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 204 29% 13%;
+    --primary: 195 90% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 44 94% 92%;
+    --secondary-foreground: 34 67% 24%;
+    --muted: 203 31% 92%;
+    --muted-foreground: 205 17% 38%;
+    --accent: 48 96% 88%;
+    --accent-foreground: 34 67% 24%;
+    --destructive: 0 82% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 205 31% 84%;
+    --input: 205 31% 84%;
+    --ring: 195 90% 38%;
+    --radius: 0.75rem;
   }
 
   * {
@@ -36,7 +36,12 @@
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
+    font-family: "Sora", "Avenir Next", "Segoe UI", sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background:
+      radial-gradient(circle at 12% 2%, hsl(var(--accent) / 0.45), transparent 30%),
+      radial-gradient(circle at 90% 0%, hsl(var(--primary) / 0.2), transparent 33%),
+      hsl(var(--background));
   }
 }
 

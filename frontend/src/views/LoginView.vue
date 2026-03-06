@@ -24,7 +24,7 @@ const password = ref('')
 const passwordVisible = ref(false)
 const errorMessage = ref('')
 
-const redirectPath = computed(() => (route.query.redirect as string) || '/')
+const redirectPath = computed(() => (route.query.redirect as string) || '/app')
 
 const submit = async () => {
   errorMessage.value = ''

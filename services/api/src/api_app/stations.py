@@ -13,6 +13,7 @@ from fastapi import HTTPException, status
 PEGELONLINE_BASE_URL = "https://pegelonline.wsv.de/webservices/rest-api/v2"
 STATION_CACHE_TTL_SECONDS = 900
 STATION_FETCH_TIMEOUT_SECONDS = 20
+MEASUREMENT_CACHE_TTL_SECONDS = 120
 
 
 @dataclass(frozen=True)
@@ -35,8 +36,21 @@ class _StationCache:
     stations: tuple[StationSummary, ...]
 
 
+@dataclass(frozen=True)
+class StationMeasurement:
+    timestamp: str
+    value: float
+
+
+@dataclass
+class _MeasurementCache:
+    fetched_at_monotonic: float
+    measurements: tuple[StationMeasurement, ...]
+
+
 _cache_lock = threading.Lock()
 _station_cache: _StationCache | None = None
+_measurement_cache: dict[tuple[str, str], _MeasurementCache] = {}
 
 
 def list_stations(
@@ -64,6 +78,42 @@ def list_stations(
         )
 
     return filtered[offset : offset + limit]
+
+
+def list_station_measurements(
+    *,
+    station_uuid: str,
+    start: str,
+) -> tuple[StationMeasurement, ...]:
+    normalized_station_uuid = station_uuid.strip()
+    normalized_start = start.strip() or "P3D"
+    if not normalized_station_uuid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="station_uuid must not be empty",
+        )
+
+    cache_key = (normalized_station_uuid, normalized_start)
+    now = monotonic()
+    with _cache_lock:
+        cached = _measurement_cache.get(cache_key)
+        if (
+            cached is not None
+            and (now - cached.fetched_at_monotonic) < MEASUREMENT_CACHE_TTL_SECONDS
+        ):
+            return cached.measurements
+
+    measurements = _fetch_station_measurements_from_pegelonline(
+        station_uuid=normalized_station_uuid,
+        start=normalized_start,
+    )
+
+    with _cache_lock:
+        _measurement_cache[cache_key] = _MeasurementCache(
+            fetched_at_monotonic=monotonic(),
+            measurements=measurements,
+        )
+    return measurements
 
 
 def _station_matches_search(station: StationSummary, query: str) -> bool:
@@ -179,3 +229,49 @@ def _fetch_stations_from_pegelonline() -> tuple[StationSummary, ...]:
         )
     )
     return tuple(stations)
+
+
+def _fetch_station_measurements_from_pegelonline(
+    *,
+    station_uuid: str,
+    start: str,
+) -> tuple[StationMeasurement, ...]:
+    query = urllib_parse.urlencode({"start": start})
+    encoded_station_uuid = urllib_parse.quote(station_uuid, safe="")
+    url = f"{PEGELONLINE_BASE_URL}/stations/{encoded_station_uuid}/W/measurements.json?{query}"
+
+    try:
+        with urllib_request.urlopen(
+            url, timeout=STATION_FETCH_TIMEOUT_SECONDS
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (urllib_error.URLError, TimeoutError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                f"Could not load measurements for station {station_uuid} "
+                f"from Pegelonline: {exc}"
+            ),
+        ) from exc
+
+    if not isinstance(payload, list):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Pegelonline returned an unexpected measurements payload",
+        )
+
+    rows: list[StationMeasurement] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+
+        timestamp = item.get("timestamp")
+        value = item.get("value")
+        if not isinstance(timestamp, str):
+            continue
+        if not isinstance(value, (int, float)):
+            continue
+        rows.append(StationMeasurement(timestamp=timestamp, value=float(value)))
+
+    rows.sort(key=lambda row: row.timestamp)
+    return tuple(rows)

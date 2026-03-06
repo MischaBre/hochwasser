@@ -65,7 +65,7 @@ Build a frontend for user registration, login, and self-service job management o
 - Phase 6 complete.
 - Phase 7 deferred (post-MVP hardening).
 - Phase 8 mostly complete (map picker follow-up pending).
-- Phase 9 in progress (PR1 runtime foundation underway).
+- Phase 9 in progress (runtime foundation, public UX/legal, and mobile pass shipped; go-live hardening remains).
 
 ## Delivery Phases
 
@@ -176,25 +176,33 @@ Deployment direction (recommended):
 - [x] Include `docker compose pull/build/up -d` and quick post-deploy smoke checks.
 
 #### 9.7 Legal Notice And Liability Clarification
-- [ ] Add a visible legal notice section in public docs and frontend footer/imprint page.
-- [ ] State clearly that station/water-level data is sourced from official public providers (for example Pegelonline) and is not owned by this project.
-- [ ] State clearly that this service is informational support only and does not replace official warnings, emergency alerts, or civil protection guidance.
-- [ ] State clearly that no guarantee is given for availability, correctness, completeness, timeliness, or alert delivery.
-- [ ] State clearly that operators/maintainers are not liable for damages caused by delayed, missing, or incorrect alerts.
+- [x] Add a visible legal notice section in public docs and frontend footer/imprint page.
+- [x] State clearly that station/water-level data is sourced from official public providers (for example Pegelonline) and is not owned by this project.
+- [x] State clearly that this service is informational support only and does not replace official warnings, emergency alerts, or civil protection guidance.
+- [x] State clearly that no guarantee is given for availability, correctness, completeness, timeliness, or alert delivery.
+- [x] State clearly that operators/maintainers are not liable for damages caused by delayed, missing, or incorrect alerts.
 - [ ] Add jurisdiction-specific review item: have the final legal wording reviewed by qualified legal counsel before public launch.
 
 #### 9.8 Public Landing Page And Visual Theme
-- [ ] Add a public landing page (outside authenticated app views) explaining what the service does, who it is for, and how to get started.
-- [ ] Define and implement an intentional visual theme (typography, color tokens, spacing, icon style) that feels distinctive and trustworthy.
-- [ ] Add responsive hero, feature highlights, and clear CTA paths (login/register/status/docs).
-- [ ] Update browser metadata for public launch: final page title and favicon.
-- [ ] Favicon design direction: stylized Pegelmessstange in black/yellow palette (clean, recognizable at small sizes) with PNG plus `.ico` fallback.
-- [ ] Add a visible "Buy me a coffee" support link to profile `micbrey` in the frontend (for example footer or profile/account area).
-- [ ] Redesign authenticated dashboard landing view to focus on job overview cards instead of session/account blocks.
-- [ ] Show reduced key info per job card (station, limit, status, last update) with quick links to details/edit.
-- [ ] Add optional live Pegel trend chart per job card (or compact sparkline fallback) aligned with the alert email chart style.
-- [ ] Ensure the landing page links to legal notice/imprint and data source disclosure.
+- [x] Add a public landing page (outside authenticated app views) explaining what the service does, who it is for, and how to get started.
+- [x] Define and implement an intentional visual theme (typography, color tokens, spacing, icon style) that feels distinctive and trustworthy.
+- [x] Add responsive hero, feature highlights, and clear CTA paths (login/register/status/docs).
+- [x] Update browser metadata for public launch: final page title and favicon.
+- [x] Favicon design direction: stylized Pegelmessstange in black/yellow palette (clean, recognizable at small sizes) with PNG plus `.ico` fallback.
+- [x] Add a visible "Buy me a coffee" support link to profile `micbrey` in the frontend (for example footer or profile/account area).
+- [x] Redesign authenticated dashboard landing view to focus on job overview cards instead of session/account blocks.
+- [x] Show reduced key info per job card (station, limit, status, last update) with quick links to details/edit.
+- [x] Add optional live Pegel trend chart per job card (or compact sparkline fallback) aligned with the alert email chart style.
+- [x] Ensure the landing page links to legal notice/imprint and data source disclosure.
 - [ ] Validate accessibility basics (contrast, keyboard navigation, focus states, reduced-motion support).
+
+#### 9.9 Responsive Mobile Support
+- [x] Run a dedicated mobile UX pass for key screens (landing, login modal, dashboard, jobs list/details/form).
+- [x] Improve small-screen spacing, typography scale, and touch target sizing for actions and form controls.
+- [x] Ensure chart cards and tables degrade gracefully on narrow viewports (wrapping, horizontal scroll, or compact mode).
+- [x] Validate orientation and breakpoint behavior on common device widths (320, 360, 390, 414, 768 px).
+- [x] Verify critical flows on mobile: register/login, create/edit/delete job, view status/outbox, logout.
+- [x] Fix any mobile-specific overflow, clipping, sticky footer/header, and modal usability issues.
 
 #### Phase 9 Exit Criteria
 - [ ] Public HTTPS frontend and API reachable by domain.
@@ -204,6 +212,7 @@ Deployment direction (recommended):
 - [ ] Rollback procedure tested once.
 - [ ] Legal notice is published and reviewed.
 - [ ] Public landing page is live with final visual theme.
+- [x] Mobile UX pass is completed for core flows.
 
 ## Definition of Done
 - User can register and login from frontend.
