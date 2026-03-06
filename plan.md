@@ -64,8 +64,8 @@ Build a frontend for user registration, login, and self-service job management o
 - Phase 5 complete.
 - Phase 6 complete.
 - Phase 7 deferred (post-MVP hardening).
-- Phase 8 in progress.
-- Phase 9 planned (public VM rollout).
+- Phase 8 mostly complete (map picker follow-up pending).
+- Phase 9 in progress (PR1 runtime foundation underway).
 
 ## Delivery Phases
 
@@ -121,10 +121,10 @@ Build a frontend for user registration, login, and self-service job management o
 Testing is intentionally deferred while frontend delivery is in flow. Revisit Phase 7 in a later hardening stage.
 
 ### Phase 8: Station Discovery And Enriched Job Context
-- [ ] Add API endpoint to fetch Pegelonline stations with search/filter and short-lived caching.
-- [ ] Replace manual `station_uuid` entry in job form with searchable station picker.
-- [ ] Keep UUID as the persisted value while showing human-readable station metadata in form.
-- [ ] Enrich jobs list/details with station name, water body, agency, and coordinates where available.
+- [x] Add API endpoint to fetch Pegelonline stations with search/filter and short-lived caching.
+- [x] Replace manual `station_uuid` entry in job form with searchable station picker.
+- [x] Keep UUID as the persisted value while showing human-readable station metadata in form.
+- [x] Enrich jobs list/details with station name, water body, agency, and coordinates where available.
 - [ ] Evaluate map picker as optional follow-up after searchable dropdown baseline.
 
 ### Phase 9: Public VM Deployment
@@ -145,16 +145,16 @@ Deployment direction (recommended):
 - [ ] Confirm Compose profile usage in production (`COMPOSE_PROFILES=prod`).
 
 #### 9.2 Frontend Production Serving
-- [ ] Add a production frontend image/container (multi-stage build + static server).
-- [ ] Remove production dependency on `npm run dev`.
-- [ ] Ensure `VITE_API_BASE_URL` points to `https://api.<domain>`.
-- [ ] Keep `hochwasser-frontend` dev-only for local workflow.
+- [x] Add a production frontend image/container (multi-stage build + static server).
+- [x] Remove production dependency on `npm run dev`.
+- [x] Ensure `VITE_API_BASE_URL` points to `https://api.<domain>`.
+- [x] Keep `hochwasser-frontend` dev-only for local workflow.
 
 #### 9.3 Reverse Proxy And TLS
-- [ ] Add reverse proxy service in production compose (Caddy preferred).
-- [ ] Route frontend and API by hostnames.
-- [ ] Enable automatic Let's Encrypt certificates.
-- [ ] Expose only `80/443` publicly.
+- [x] Add reverse proxy service in production compose (Caddy preferred).
+- [x] Route frontend and API by hostnames.
+- [x] Enable automatic Let's Encrypt certificates.
+- [x] Expose only `80/443` publicly.
 
 #### 9.4 Security Hardening
 - [ ] Tighten `API_CORS_ALLOW_ORIGINS` to production frontend origin(s).
@@ -164,15 +164,16 @@ Deployment direction (recommended):
 - [ ] Use SSH keys and disable password login where possible.
 
 #### 9.5 Operations And Reliability
-- [ ] Add a deployment runbook for first deploy, updates, and rollback.
-- [ ] Add uptime checks for `/health` and `/health/live`.
+- [x] Add a deployment runbook for first deploy and updates.
+- [x] Add uptime checks for `/health` and `/health/live`.
+- [ ] Extend runbook with explicit rollback procedure and verification drill.
 - [ ] Define backup/restore expectations (Supabase backups + config backup).
 - [ ] Document log access and incident triage steps.
 
 #### 9.6 CI/CD And Release Workflow
-- [ ] Add a simple release path (manual script or GitHub Actions over SSH).
+- [x] Add a simple release path (manual script with env validation + smoke checks).
 - [ ] Deploy from tagged versions or protected `main` only.
-- [ ] Include `docker compose pull/build/up -d` and quick post-deploy smoke checks.
+- [x] Include `docker compose pull/build/up -d` and quick post-deploy smoke checks.
 
 #### 9.7 Legal Notice And Liability Clarification
 - [ ] Add a visible legal notice section in public docs and frontend footer/imprint page.
@@ -188,6 +189,7 @@ Deployment direction (recommended):
 - [ ] Add responsive hero, feature highlights, and clear CTA paths (login/register/status/docs).
 - [ ] Update browser metadata for public launch: final page title and favicon.
 - [ ] Favicon design direction: stylized Pegelmessstange in black/yellow palette (clean, recognizable at small sizes) with PNG plus `.ico` fallback.
+- [ ] Add a visible "Buy me a coffee" support link to profile `micbrey` in the frontend (for example footer or profile/account area).
 - [ ] Redesign authenticated dashboard landing view to focus on job overview cards instead of session/account blocks.
 - [ ] Show reduced key info per job card (station, limit, status, last update) with quick links to details/edit.
 - [ ] Add optional live Pegel trend chart per job card (or compact sparkline fallback) aligned with the alert email chart style.
