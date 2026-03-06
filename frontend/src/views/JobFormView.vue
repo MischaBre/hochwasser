@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { Clock3, Gauge, Languages, MapPin, Send, Tag, Users } from 'lucide-vue-next'
+import { CronLight } from '@vue-js-cron/light'
+import '@vue-js-cron/light/dist/light.css'
 import Alert from '@/components/ui/alert/Alert.vue'
 import Button from '@/components/ui/button/Button.vue'
 import Card from '@/components/ui/card/Card.vue'
@@ -30,7 +32,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const queryClient = useQueryClient()
-const { t } = useI18n()
+const { locale, t } = useI18n()
 const { formatNumber } = useFormatters()
 
 const jobUuid = computed(() => route.params.jobUuid as string | undefined)
@@ -63,6 +65,7 @@ const serverErrors = reactive<JobFormErrors>({})
 const clientErrors = computed(() => validateJobForm(form))
 const stationSearch = ref('')
 const stationPanelOpen = ref(false)
+const cronEditorError = ref('')
 
 const normalizeStationSearch = (value: string): string => {
   return value
@@ -231,6 +234,19 @@ const onLimitChange = (value: string): void => {
   form.limit_cm = value.replace(/\D+/g, '')
   clearServerError('limit_cm')
 }
+
+const onScheduleCronChange = (value: string): void => {
+  form.schedule_cron = value
+  cronEditorError.value = ''
+  markTouched('schedule_cron')
+  clearServerError('schedule_cron')
+}
+
+const onScheduleCronError = (value: string): void => {
+  cronEditorError.value = value
+}
+
+const cronLocale = computed(() => (locale.value === 'de' ? 'de' : 'en'))
 
 const showNoStationMatches = computed(() => {
   if (stationsQuery.isLoading.value) {
@@ -514,24 +530,6 @@ const submit = async () => {
             </div>
 
             <div class="space-y-2 md:col-span-2">
-              <Label for="alert-recipient">{{ t('jobForm.fields.alertRecipient') }}</Label>
-              <div class="relative">
-                <Send class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="alert-recipient"
-                  v-model="form.alert_recipient"
-                  class="pl-9"
-                  type="email"
-                  :placeholder="t('jobForm.fields.alertRecipientPlaceholder')"
-                  required
-                  @blur="markTouched('alert_recipient')"
-                  @input="clearServerError('alert_recipient')"
-                />
-              </div>
-              <p v-if="getFieldError('alert_recipient')" class="text-sm text-destructive">{{ getFieldError('alert_recipient') }}</p>
-            </div>
-
-            <div class="space-y-2 md:col-span-2">
               <Label for="recipients">{{ t('jobForm.fields.recipients') }}</Label>
               <div class="relative">
                 <Users class="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -552,26 +550,71 @@ const submit = async () => {
 
             <div class="space-y-2 md:col-span-2">
               <Label for="schedule-cron">{{ t('jobForm.fields.scheduleCron') }}</Label>
-              <div class="relative">
-                <Clock3 class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="schedule-cron"
-                  v-model="form.schedule_cron"
-                  class="pl-9"
-                  :placeholder="t('jobForm.fields.scheduleCronPlaceholder')"
-                  required
-                  @blur="markTouched('schedule_cron')"
-                  @input="clearServerError('schedule_cron')"
+              <div class="space-y-4 rounded-md border p-4">
+                <CronLight
+                  :key="`cron-${cronLocale}`"
+                  :model-value="form.schedule_cron"
+                  format="crontab"
+                  :locale="cronLocale"
+                  @update:model-value="onScheduleCronChange"
+                  @error="onScheduleCronError"
                 />
+
+                <div class="space-y-2">
+                  <div class="relative">
+                    <Clock3 class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="schedule-cron"
+                      :model-value="form.schedule_cron"
+                      class="pl-9"
+                      :placeholder="t('jobForm.fields.scheduleCronPlaceholder')"
+                      required
+                      @blur="markTouched('schedule_cron')"
+                      @update:model-value="onScheduleCronChange"
+                    />
+                  </div>
+
+                  <p class="text-xs text-muted-foreground">{{ t('jobForm.fields.scheduleCronHint') }}</p>
+                </div>
+
+                <p v-if="cronEditorError" class="text-xs text-muted-foreground">{{ t('jobForm.fields.scheduleCronEditorError', { message: cronEditorError }) }}</p>
               </div>
-              <p class="text-xs text-muted-foreground">{{ t('jobForm.fields.scheduleCronHint') }}</p>
+              <p class="text-xs text-muted-foreground">{{ t('jobForm.fields.scheduleCronCheckInfo') }}</p>
               <p v-if="getFieldError('schedule_cron')" class="text-sm text-destructive">{{ getFieldError('schedule_cron') }}</p>
             </div>
 
-            <div class="md:col-span-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              <div class="flex items-center gap-2">
-                <input id="repeat-alerts" v-model="form.repeat_alerts_on_check" type="checkbox" class="h-4 w-4 rounded border-input" />
-                <Label for="repeat-alerts">{{ t('jobForm.fields.repeatAlertsOnCheck') }}</Label>
+            <div class="space-y-2 md:col-span-2">
+              <Label for="alert-recipient">{{ t('jobForm.fields.alertRecipient') }}</Label>
+              <div class="relative">
+                <Send class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="alert-recipient"
+                  v-model="form.alert_recipient"
+                  class="pl-9"
+                  type="email"
+                  :placeholder="t('jobForm.fields.alertRecipientPlaceholder')"
+                  required
+                  @blur="markTouched('alert_recipient')"
+                  @input="clearServerError('alert_recipient')"
+                />
+              </div>
+              <p class="text-xs text-muted-foreground">{{ t('jobForm.fields.alertRecipientHint') }}</p>
+              <p v-if="getFieldError('alert_recipient')" class="text-sm text-destructive">{{ getFieldError('alert_recipient') }}</p>
+            </div>
+
+            <div class="md:col-span-2 flex flex-wrap items-start gap-4 text-sm text-muted-foreground">
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <input id="repeat-alerts" v-model="form.repeat_alerts_on_check" type="checkbox" class="h-4 w-4 rounded border-input" />
+                  <Label for="repeat-alerts">{{ t('jobForm.fields.repeatAlertsOnCheck') }}</Label>
+                </div>
+                <span
+                  class="inline-block cursor-help text-xs font-medium text-muted-foreground underline decoration-dotted underline-offset-2"
+                  :title="t('jobForm.fields.repeatAlertsOnCheckHint')"
+                  :aria-label="t('jobForm.fields.repeatAlertsOnCheckHint')"
+                >
+                  {{ t('jobForm.fields.moreInfo') }}
+                </span>
               </div>
               <div v-if="isEditMode" class="flex items-center gap-2">
                 <input id="job-enabled" v-model="form.enabled" type="checkbox" class="h-4 w-4 rounded border-input" />

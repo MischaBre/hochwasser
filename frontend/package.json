@@ -11,6 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "2.38.4",
     "@tanstack/vue-query": "5.90.5",
+    "@vue-js-cron/light": "^5.1.1",
     "lucide-vue-next": "0.510.0",
     "luxon": "^3.5.0",
     "pinia": "2.3.1",
