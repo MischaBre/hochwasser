@@ -27,7 +27,7 @@ help:
 	@printf "  up-prod        Start stack with prod profile\n"
 	@printf "  up-public      Start public VM stack (base + prod compose)\n"
 	@printf "  deploy-public  Validate env, deploy public VM stack, run smoke checks\n"
-	@printf "  down           Stop stack\n"
+	@printf "  down           Stop all local/public stacks\n"
 	@printf "  down-public    Stop public VM stack\n"
 	@printf "  logs           Follow docker compose logs\n"
 	@printf "  logs-public    Follow public VM stack logs\n"
@@ -108,7 +108,8 @@ deploy-public:
 	./scripts/deploy_public_stack.sh
 
 down:
-	$(COMPOSE) down
+	$(COMPOSE) down --remove-orphans
+	COMPOSE_PROFILES=prod $(COMPOSE) $(COMPOSE_PUBLIC_FILES) down --remove-orphans
 
 down-public:
 	COMPOSE_PROFILES=prod $(COMPOSE) $(COMPOSE_PUBLIC_FILES) down
