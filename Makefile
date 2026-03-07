@@ -49,16 +49,16 @@ install:
 install-dev:
 	$(UV) sync --dev --all-extras
 
-lint:
+lint: install-dev
 	$(UV) run ruff check .
 
-format-check:
+format-check: install-dev
 	$(UV) run ruff format --check .
 
-test:
+test: install-dev
 	$(UV) run pytest -q -m "not integration"
 
-test-api-integration:
+test-api-integration: install-dev
 	@test -n "$$API_TEST_DATABASE_URL" || { \
 		echo "API_TEST_DATABASE_URL is required for integration tests."; \
 		echo "Refusing to fall back to API_DATABASE_URL/DATABASE_URL."; \
