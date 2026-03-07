@@ -39,8 +39,8 @@ const { t } = useI18n();
         {{ t("imprint.emailLabel") }}
         <a
           class="font-semibold text-foreground hover:underline"
-          href="mailto:gemsa.michael@gmail.com"
-          >gemsa.michael@gmail.com</a
+          href="mailto:info@pegel-alarm.com"
+          >info@pegel-alarm.com</a
         >
       </p>
     </div>

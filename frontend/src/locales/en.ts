@@ -96,7 +96,7 @@ const en = {
       disclaimer: "Liability and service disclaimer",
     },
     person: "Michael Breyer",
-    addressLine1: "Siebengbirgsallee 51",
+    addressLine1: "Siebengebirgsallee 51",
     addressLine2: "50939 Cologne",
     country: "Germany",
     emailLabel: "Email:",
@@ -117,7 +117,7 @@ const en = {
     controller: {
       title: "1. Controller",
       person: "Michael Breyer",
-      addressLine1: "Siebengbirgsallee 51",
+      addressLine1: "Siebengebirgsallee 51",
       addressLine2: "50939 Cologne",
       country: "Germany",
       emailLabel: "Email:",

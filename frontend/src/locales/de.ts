@@ -96,7 +96,7 @@ const de = {
       disclaimer: "Haftungs- und Nutzungshinweis",
     },
     person: "Michael Breyer",
-    addressLine1: "Siebengbirgsallee 51",
+    addressLine1: "Siebengebirgsallee 51",
     addressLine2: "50939 Köln",
     country: "Deutschland",
     emailLabel: "E-Mail:",
@@ -117,7 +117,7 @@ const de = {
     controller: {
       title: "1. Verantwortlicher",
       person: "Michael Breyer",
-      addressLine1: "Siebengbirgsallee 51",
+      addressLine1: "Siebengebirgsallee 51",
       addressLine2: "50939 Köln",
       country: "Deutschland",
       emailLabel: "E-Mail:",
