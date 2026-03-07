@@ -48,7 +48,6 @@ def _make_settings(jobs: tuple[AlertJob, ...]) -> Settings:
         smtp_sender="sender@example.com",
         smtp_use_starttls=True,
         smtp_use_ssl=False,
-        admin_recipients=("admin@example.com",),
         health_host="0.0.0.0",
         health_port=8090,
         health_failure_threshold=1,

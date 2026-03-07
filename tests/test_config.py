@@ -7,7 +7,6 @@ def _set_required_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db")
     monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
     monkeypatch.setenv("SMTP_SENDER", "sender@example.com")
-    monkeypatch.setenv("ALERT_RECIPIENTS", "admin@example.com")
     monkeypatch.setenv("TZ", "Europe/Berlin")
 
 
@@ -43,7 +42,6 @@ def test_load_settings_parses_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.jobs[0].alert_recipient == "ops@example.com"
     assert settings.jobs[0].locale == "de"
     assert settings.jobs[0].schedule_cron == "*/30 * * * *"
-    assert settings.admin_recipients == ("admin@example.com",)
 
 
 def test_load_settings_invalid_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -58,7 +56,6 @@ def test_load_settings_requires_database_url(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("SMTP_HOST", "smtp.example.com")
     monkeypatch.setenv("SMTP_SENDER", "sender@example.com")
-    monkeypatch.setenv("ALERT_RECIPIENTS", "admin@example.com")
     monkeypatch.setenv("TZ", "Europe/Berlin")
 
     with pytest.raises(ValueError, match="Missing required environment variable"):

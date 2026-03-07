@@ -50,7 +50,6 @@ class Settings:
     smtp_sender: str
     smtp_use_starttls: bool
     smtp_use_ssl: bool
-    admin_recipients: tuple[str, ...]
 
     health_host: str
     health_port: int
@@ -198,7 +197,6 @@ def load_settings() -> Settings:
         smtp_sender=_get_required("SMTP_SENDER"),
         smtp_use_starttls=_get_bool("SMTP_USE_STARTTLS", True),
         smtp_use_ssl=_get_bool("SMTP_USE_SSL", False),
-        admin_recipients=_parse_recipients(_get_required("ALERT_RECIPIENTS")),
         health_host=os.getenv("HEALTH_HOST", "0.0.0.0"),
         health_port=int(os.getenv("HEALTH_PORT", "8090")),
         health_failure_threshold=int(os.getenv("HEALTH_FAILURE_THRESHOLD", "3")),

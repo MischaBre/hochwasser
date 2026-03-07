@@ -63,9 +63,11 @@ services:
       - "443:443"
     environment:
       PUBLIC_APP_DOMAIN: ${PUBLIC_APP_DOMAIN}
+      PUBLIC_APP_WWW_DOMAIN: ${PUBLIC_APP_WWW_DOMAIN}
       PUBLIC_API_DOMAIN: ${PUBLIC_API_DOMAIN}
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /etc/ssl/pegel-alarm:/etc/ssl/pegel-alarm:ro
       - caddy_data:/data
       - caddy_config:/config
     healthcheck:

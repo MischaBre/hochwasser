@@ -155,7 +155,6 @@ def _make_settings() -> Settings:
         smtp_sender="alerts@example.com",
         smtp_use_starttls=True,
         smtp_use_ssl=False,
-        admin_recipients=("ops@example.com",),
         health_host="0.0.0.0",
         health_port=8090,
         health_failure_threshold=3,

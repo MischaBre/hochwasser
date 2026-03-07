@@ -1,9 +1,16 @@
 {$PUBLIC_APP_DOMAIN} {
+  tls /etc/ssl/pegel-alarm/fullchain.pem /etc/ssl/pegel-alarm/privkey.key
   encode zstd gzip
   reverse_proxy hochwasser-frontend-prod:8080
 }
 
+{$PUBLIC_APP_WWW_DOMAIN} {
+  tls /etc/ssl/pegel-alarm/fullchain.pem /etc/ssl/pegel-alarm/privkey.key
+  redir https://{$PUBLIC_APP_DOMAIN}{uri} permanent
+}
+
 {$PUBLIC_API_DOMAIN} {
+  tls /etc/ssl/pegel-alarm/fullchain.pem /etc/ssl/pegel-alarm/privkey.key
   encode zstd gzip
   reverse_proxy hochwasser-api:8080
 }

@@ -64,10 +64,9 @@ services:
       flyway:
         condition: service_completed_successfully
     environment:
-      PROVIDER: pegelonline
+      PROVIDER: "${PROVIDER:-pegelonline}"
       DATABASE_URL: "${DATABASE_URL:-postgresql://hochwasser:hochwasser@postgres:5432/hochwasser}"
       FORECAST_SERIES_SHORTNAME: "WV"
-      ALERT_RECIPIENTS: ${ALERT_RECIPIENTS}
 
       ALERT_DEDUPE_HOURS: "24"
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
@@ -172,7 +171,6 @@ services:
       SMTP_SENDER: ${SMTP_SENDER}
       SMTP_USE_STARTTLS: "${SMTP_USE_STARTTLS}"
       SMTP_USE_SSL: "${SMTP_USE_SSL}"
-      ALERT_RECIPIENTS: ${ALERT_RECIPIENTS}
       WATCHDOG_ALERT_RECIPIENTS: ${WATCHDOG_ALERT_RECIPIENTS}
       WATCHDOG_WATCH_CONTAINERS: "hochwasser-alert"
       WATCHDOG_COOLDOWN_SECONDS: "900"

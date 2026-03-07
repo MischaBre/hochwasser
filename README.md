@@ -122,7 +122,6 @@ For public VM deployment with TLS and host routing, see `.env.prod.example` and 
 - `SMTP_SENDER`: From address
 - `SMTP_USE_STARTTLS`: `true`/`false`
 - `SMTP_USE_SSL`: `true`/`false`
-- `ALERT_RECIPIENTS`: admin recipients for job-down health alerts
 - `HEALTH_HOST`: bind host for health endpoint (default `0.0.0.0`)
 - `HEALTH_PORT`: health endpoint port (default `8090`)
 - `HEALTH_FAILURE_THRESHOLD`: consecutive failed cycles before `/health` returns unhealthy (default `3`)
@@ -147,6 +146,7 @@ Frontend settings:
 Public runtime settings:
 
 - `PUBLIC_APP_DOMAIN`: public frontend domain for Caddy routing (for example `app.example.com`)
+- `PUBLIC_APP_WWW_DOMAIN`: www alias redirected to `PUBLIC_APP_DOMAIN` (for example `www.example.com`)
 - `PUBLIC_API_DOMAIN`: public API domain for Caddy routing (for example `api.example.com`)
 
 ## Frontend (Local)
@@ -189,7 +189,7 @@ cp .env.prod.example .env
 
 2. Set required domains and CORS:
 
-- `PUBLIC_APP_DOMAIN`, `PUBLIC_API_DOMAIN`
+- `PUBLIC_APP_DOMAIN`, `PUBLIC_APP_WWW_DOMAIN`, `PUBLIC_API_DOMAIN`
 - `API_CORS_ALLOW_ORIGINS=https://<PUBLIC_APP_DOMAIN>`
 
 3. Start the public stack:
@@ -384,7 +384,7 @@ python scripts/migrate_files_to_db.py --database-url "postgresql://hochwasser:ho
 ## Job-Down Alerts
 
 - If a job reaches the configured failure threshold, the service sends one "job down" email when it transitions to degraded.
-- Recipients for this email are `ALERT_RECIPIENTS` (admin list) plus that job's `alert_recipient`.
+- Recipients for this email are that job's `alert_recipient` only.
 
 ## Deduplication Key
 

@@ -128,6 +128,7 @@ health:
 smoke-public:
 	@test -n "$$PUBLIC_API_DOMAIN" || { echo "PUBLIC_API_DOMAIN is required"; exit 1; }
 	@test -n "$$PUBLIC_APP_DOMAIN" || { echo "PUBLIC_APP_DOMAIN is required"; exit 1; }
+	@test -n "$$PUBLIC_APP_WWW_DOMAIN" || { echo "PUBLIC_APP_WWW_DOMAIN is required"; exit 1; }
 	curl -fsS "https://$$PUBLIC_API_DOMAIN/health/live"
 	curl -fsS "https://$$PUBLIC_API_DOMAIN/health/ready"
 	curl -fsS "https://$$PUBLIC_APP_DOMAIN" > /dev/null

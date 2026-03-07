@@ -18,6 +18,7 @@ set +a
 
 required_vars=(
   PUBLIC_APP_DOMAIN
+  PUBLIC_APP_WWW_DOMAIN
   PUBLIC_API_DOMAIN
   VITE_API_BASE_URL
   VITE_SUPABASE_URL
@@ -54,7 +55,12 @@ if [[ "${API_CORS_ALLOW_ORIGINS}" != *"https://${PUBLIC_APP_DOMAIN}"* ]]; then
   exit 1
 fi
 
-echo "Deploying public stack for ${PUBLIC_APP_DOMAIN} and ${PUBLIC_API_DOMAIN}"
+if [[ "${PUBLIC_APP_WWW_DOMAIN}" != "www.${PUBLIC_APP_DOMAIN}" ]]; then
+  echo "PUBLIC_APP_WWW_DOMAIN should be www.${PUBLIC_APP_DOMAIN}"
+  exit 1
+fi
+
+echo "Deploying public stack for ${PUBLIC_APP_DOMAIN} (+ ${PUBLIC_APP_WWW_DOMAIN}) and ${PUBLIC_API_DOMAIN}"
 
 docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build

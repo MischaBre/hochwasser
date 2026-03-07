@@ -233,9 +233,7 @@ class JobSchedulerManager:
     def _send_job_down_alert(
         self, settings: Settings, job: AlertJob, error: str
     ) -> None:
-        recipients = tuple(
-            dict.fromkeys((*settings.admin_recipients, job.alert_recipient))
-        )
+        recipients = (job.alert_recipient,)
         subject = f"[DOWN] Job {job.name} ({job.job_uuid}) degraded"
         body = (
             "A job crossed the configured health failure threshold.\n\n"
