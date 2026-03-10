@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import os
+import threading
+from collections import deque
+from time import monotonic
 from typing import Annotated
 from uuid import UUID
 
@@ -55,6 +58,13 @@ from api_app.supabase_admin import delete_auth_user
 
 app = FastAPI(title="Hochwasser API", version="0.1.0")
 
+_rate_limit_lock = threading.Lock()
+_rate_limit_buckets: dict[str, deque[float]] = {}
+_WRITE_WINDOW_SECONDS = 60
+_WRITE_MAX_REQUESTS = 30
+_ADMIN_WINDOW_SECONDS = 60
+_ADMIN_MAX_REQUESTS = 20
+
 
 def _cors_allow_origins_from_env() -> tuple[str, ...]:
     return tuple(
@@ -101,6 +111,52 @@ def _actor_dep(
 ActorDep = Annotated[Actor, Depends(_actor_dep)]
 
 
+def _enforce_rate_limit(
+    *, key: str, max_requests: int, window_seconds: int, now: float | None = None
+) -> None:
+    current = monotonic() if now is None else now
+
+    with _rate_limit_lock:
+        bucket = _rate_limit_buckets.get(key)
+        if bucket is None:
+            bucket = deque()
+            _rate_limit_buckets[key] = bucket
+
+        cutoff = current - window_seconds
+        while bucket and bucket[0] <= cutoff:
+            bucket.popleft()
+
+        if len(bucket) >= max_requests:
+            retry_after = max(1, int(window_seconds - (current - bucket[0])))
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many requests. Please retry later.",
+                headers={"Retry-After": str(retry_after)},
+            )
+
+        bucket.append(current)
+
+
+def _write_rate_limit_dep(actor: ActorDep) -> None:
+    _enforce_rate_limit(
+        key=f"write:{actor.user_id}",
+        max_requests=_WRITE_MAX_REQUESTS,
+        window_seconds=_WRITE_WINDOW_SECONDS,
+    )
+
+
+def _admin_rate_limit_dep(actor: ActorDep) -> None:
+    _enforce_rate_limit(
+        key=f"admin:{actor.user_id}",
+        max_requests=_ADMIN_MAX_REQUESTS,
+        window_seconds=_ADMIN_WINDOW_SECONDS,
+    )
+
+
+WriteRateLimitDep = Annotated[None, Depends(_write_rate_limit_dep)]
+AdminRateLimitDep = Annotated[None, Depends(_admin_rate_limit_dep)]
+
+
 @app.get("/health/live")
 def health_live() -> dict[str, str]:
     return {"status": "ok"}
@@ -116,7 +172,7 @@ def health_ready(settings: SettingsDep) -> dict[str, str]:
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"database unavailable: {exc}",
+            detail="database unavailable",
         ) from exc
     return {"status": "ok"}
 
@@ -166,7 +222,7 @@ def get_jobs(
 ) -> list[JobResponse]:
     rows = list_jobs(
         database_url=settings.database_url,
-        org_id=actor.org_id,
+        actor=actor,
         include_disabled=include_disabled,
     )
     return [JobResponse(**row) for row in rows]
@@ -217,7 +273,9 @@ def post_job(
     payload: JobCreateRequest,
     actor: ActorDep,
     settings: SettingsDep,
+    _rate_limit: WriteRateLimitDep,
 ) -> JobResponse:
+    del _rate_limit
     _enforce_recipients_limit(
         recipients=payload.recipients,
         max_recipients=settings.max_alarm_recipients_per_job,
@@ -247,7 +305,9 @@ def patch_job(
     payload: JobUpdateRequest,
     actor: ActorDep,
     settings: SettingsDep,
+    _rate_limit: WriteRateLimitDep,
 ) -> JobResponse:
+    del _rate_limit
     if payload.recipients is not None:
         _enforce_recipients_limit(
             recipients=payload.recipients,
@@ -268,13 +328,20 @@ def delete_job(
     job_uuid: str,
     actor: ActorDep,
     settings: SettingsDep,
+    _rate_limit: WriteRateLimitDep,
 ) -> Response:
+    del _rate_limit
     soft_delete_job(database_url=settings.database_url, actor=actor, job_uuid=job_uuid)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.delete("/v1/me", status_code=status.HTTP_204_NO_CONTENT)
-def delete_me(actor: ActorDep, settings: SettingsDep) -> Response:
+def delete_me(
+    actor: ActorDep,
+    settings: SettingsDep,
+    _rate_limit: WriteRateLimitDep,
+) -> Response:
+    del _rate_limit
     if not settings.supabase_url or not settings.supabase_service_role_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -297,7 +364,9 @@ def job_status(
     settings: SettingsDep,
 ) -> JobStatusResponse:
     row = get_job_status(
-        database_url=settings.database_url, org_id=actor.org_id, job_uuid=job_uuid
+        database_url=settings.database_url,
+        actor=actor,
+        job_uuid=job_uuid,
     )
     if row is None:
         raise HTTPException(
@@ -316,7 +385,7 @@ def job_outbox(
 ) -> OutboxListResponse:
     rows = list_job_outbox(
         database_url=settings.database_url,
-        org_id=actor.org_id,
+        actor=actor,
         job_uuid=job_uuid,
         limit=limit,
         offset=offset,
@@ -332,7 +401,9 @@ def job_outbox(
 def admin_list_members(
     actor: ActorDep,
     settings: SettingsDep,
+    _rate_limit: AdminRateLimitDep,
 ) -> OrganizationMembersListResponse:
+    del _rate_limit
     rows = list_members(database_url=settings.database_url, actor=actor)
     return OrganizationMembersListResponse(
         items=[OrganizationMemberResponse(**row) for row in rows]
@@ -347,7 +418,9 @@ def admin_promote_member(
     user_id: UUID,
     actor: ActorDep,
     settings: SettingsDep,
+    _rate_limit: AdminRateLimitDep,
 ) -> OrganizationMemberResponse:
+    del _rate_limit
     row = set_member_role(
         database_url=settings.database_url,
         actor=actor,
@@ -365,7 +438,9 @@ def admin_demote_member(
     user_id: UUID,
     actor: ActorDep,
     settings: SettingsDep,
+    _rate_limit: AdminRateLimitDep,
 ) -> OrganizationMemberResponse:
+    del _rate_limit
     row = set_member_role(
         database_url=settings.database_url,
         actor=actor,
@@ -379,9 +454,11 @@ def admin_demote_member(
 def admin_job_audit(
     actor: ActorDep,
     settings: SettingsDep,
+    _rate_limit: AdminRateLimitDep,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> JobAuditListResponse:
+    del _rate_limit
     rows = list_job_audit_log(
         database_url=settings.database_url,
         actor=actor,
@@ -399,9 +476,11 @@ def admin_job_audit(
 def admin_membership_audit(
     actor: ActorDep,
     settings: SettingsDep,
+    _rate_limit: AdminRateLimitDep,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> MembershipAuditListResponse:
+    del _rate_limit
     rows = list_membership_audit_log(
         database_url=settings.database_url,
         actor=actor,

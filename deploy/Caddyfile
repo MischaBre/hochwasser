@@ -1,5 +1,16 @@
+(security_headers) {
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Frame-Options "DENY"
+    -Server
+  }
+}
+
 {$PUBLIC_APP_DOMAIN} {
   tls /etc/ssl/pegel-alarm/fullchain.pem /etc/ssl/pegel-alarm/privkey.key
+  import security_headers
   encode zstd gzip
   reverse_proxy hochwasser-frontend-prod:8080
 }
@@ -11,6 +22,7 @@
 
 {$PUBLIC_API_DOMAIN} {
   tls /etc/ssl/pegel-alarm/fullchain.pem /etc/ssl/pegel-alarm/privkey.key
+  import security_headers
   encode zstd gzip
   reverse_proxy hochwasser-api:8080
 }

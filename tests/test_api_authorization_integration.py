@@ -217,8 +217,12 @@ def _client_for_actor(db_url: str, actor: Actor) -> Iterator[TestClient]:
         app.dependency_overrides.clear()
 
 
-def _create_job_for_owner(
-    db_url: str, actors: ActorSet, name: str = "owned-job"
+def _create_job(
+    db_url: str,
+    *,
+    org_id: UUID,
+    creator_id: UUID,
+    name: str,
 ) -> str:
     job_uuid = str(uuid4())
     now = datetime.now(tz=timezone.utc)
@@ -255,14 +259,25 @@ def _create_job_for_owner(
                         "ops@example.com",
                         "en",
                         "*/10 * * * *",
-                        actors.org_id,
-                        actors.owner.user_id,
-                        actors.owner.user_id,
+                        org_id,
+                        creator_id,
+                        creator_id,
                         now,
                         now,
                     ),
                 )
     return job_uuid
+
+
+def _create_job_for_owner(
+    db_url: str, actors: ActorSet, name: str = "owned-job"
+) -> str:
+    return _create_job(
+        db_url,
+        org_id=actors.org_id,
+        creator_id=actors.owner.user_id,
+        name=name,
+    )
 
 
 def test_owner_can_patch_own_job(db_url: str, actors: ActorSet) -> None:
@@ -311,6 +326,12 @@ def test_delete_is_soft_delete(db_url: str, actors: ActorSet) -> None:
 
 def test_jobs_endpoint_is_org_scoped(db_url: str, actors: ActorSet) -> None:
     own_job_uuid = _create_job_for_owner(db_url, actors, name="visible-job")
+    same_org_other_member_job_uuid = _create_job(
+        db_url,
+        org_id=actors.org_id,
+        creator_id=actors.other_member.user_id,
+        name="same-org-hidden-job",
+    )
 
     other_org_id = uuid4()
     other_job_uuid = str(uuid4())
@@ -366,6 +387,7 @@ def test_jobs_endpoint_is_org_scoped(db_url: str, actors: ActorSet) -> None:
         assert response.status_code == 200
         job_uuids = {item["job_uuid"] for item in response.json()}
         assert own_job_uuid in job_uuids
+        assert same_org_other_member_job_uuid not in job_uuids
         assert other_job_uuid not in job_uuids
     finally:
         _best_effort_cleanup(
@@ -444,6 +466,28 @@ def test_status_returns_404_for_job_outside_org(db_url: str, actors: ActorSet) -
             "DELETE FROM public.organizations WHERE id = %s",
             (other_org_id,),
         )
+
+
+def test_member_cannot_read_status_for_other_members_job(
+    db_url: str, actors: ActorSet
+) -> None:
+    job_uuid = _create_job_for_owner(db_url, actors)
+
+    with _client_for_actor(db_url, actors.other_member) as client:
+        response = client.get(f"/v1/jobs/{job_uuid}/status")
+    assert response.status_code == 403
+    assert "owner or admin" in response.json()["detail"]
+
+
+def test_member_cannot_read_outbox_for_other_members_job(
+    db_url: str, actors: ActorSet
+) -> None:
+    job_uuid = _create_job_for_owner(db_url, actors)
+
+    with _client_for_actor(db_url, actors.other_member) as client:
+        response = client.get(f"/v1/jobs/{job_uuid}/outbox")
+    assert response.status_code == 403
+    assert "owner or admin" in response.json()["detail"]
 
 
 def test_non_admin_cannot_manage_members(db_url: str, actors: ActorSet) -> None:
