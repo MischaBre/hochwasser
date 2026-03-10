@@ -1,11 +1,11 @@
 const de = {
   shell: {
-    appName: "Hochwasser",
-    appSection: "Einsatz-Dashboard",
+    appName: "Pegel-Alarm",
+    appSection: "Deine Alarmzentrale",
     nav: {
       overview: "Dashboard",
-      jobs: "Jobs",
       account: "Konto",
+      jobs: "Alarme",
     },
     actions: {
       signOut: "Abmelden",
@@ -17,7 +17,7 @@ const de = {
     },
     footer: {
       source:
-        "Datenquellen und Stationsmetadaten stammen aus offiziellen öffentlichen Quellen.",
+        "Messdaten und Stationsinfos stammen aus offiziellen öffentlichen Quellen.",
       imprint: "Impressum",
       privacy: "Datenschutzerklärung",
     },
@@ -52,6 +52,9 @@ const de = {
       submit: "Konto endgültig löschen",
       failed: "Konto konnte nicht gelöscht werden.",
     },
+  },
+  donation: {
+    cta: "Projekt unterstützen",
   },
   auth: {
     login: {
@@ -90,10 +93,10 @@ const de = {
     },
   },
   landing: {
-    kicker: "Frühwarn-Workspace für Hochwasser",
-    title:
-      "Beobachte deine Pegel und reagiere, bevor Grenzwerte kritisch werden.",
-    copy: "Hochwasser Alarm verbindet offizielle Stationsdaten, Schwellwert-Alarmierung und praktische Job-Steuerung in einem fokussierten Dashboard.",
+    kicker: "Einfacher Pegel-Alarm für alle",
+    title: "Du bekommst E-Mails, wenn dein Pegel kritisch wird.",
+    copy: "Wähle eine Messstation, lege einen Grenzwert fest und erhalte automatische Benachrichtigungen. So weißt du frühzeitig, wenn Handlungsbedarf entsteht.",
+    freeParagraph: "Der Service ist für dich komplett kostenfrei.",
     actions: {
       signIn: "Anmelden",
       createAccount: "Konto erstellen",
@@ -104,21 +107,38 @@ const de = {
     },
     features: {
       alerting: {
-        title: "Grenzwert-Alarme mit klarem Fokus",
-        copy: "Konfiguriere Jobs pro Station, setze klare Limits und reduziere unnötigen Alarm-Lärm.",
+        title: "Klare Alarme statt Zahlenchaos",
+        copy: "Du legst je Station deinen Grenzwert fest und bekommst nur dann eine Nachricht, wenn es wirklich wichtig ist.",
       },
       monitoring: {
-        title: "Operativer Live-Überblick",
-        copy: "Sieh Status, Trends und Kontext pro Job auf einen Blick für schnellere Entscheidungen.",
+        title: "Alles auf einen Blick",
+        copy: "Im Dashboard siehst du aktuelle Pegel, Trends und den Status deiner Alarme in verständlicher Form.",
       },
       sources: {
-        title: "Integration offizieller Quellen",
-        copy: "Stations- und Pegeldaten werden über offizielle öffentliche Anbieter bereitgestellt.",
+        title: "Offizielle Daten",
+        copy: "Die Pegel- und Stationsdaten beziehen wir direkt von Pegelonline (WSV).",
+      },
+    },
+    steps: {
+      pickStation: {
+        title: "Station auswählen",
+        copy: "Suche deine Messstation nach Name oder Gewässer und wähle sie aus.",
+      },
+      setLimit: {
+        title: "Grenzwert festlegen",
+        copy: "Definiere den Pegel in Zentimetern, ab dem du gewarnt werden willst.",
+      },
+      getAlert: {
+        title: "E-Mail erhalten",
+        copy: "Wenn der Pegel den Wert erreicht oder sich die Lage verschärft, wirst du automatisch informiert.",
       },
     },
     footer: {
       source:
-        "Nur zur Information. Offizielle Warnungen und Einsatzanweisungen haben immer Vorrang.",
+        "Nur zur Information: Offizielle Warnungen und Anweisungen von Behörden haben immer Vorrang.",
+      free: "Die Nutzung ist kostenlos.",
+      donate:
+        "Wenn dir der kostenfreie Dienst hilft, freue ich mich über eine kleine Spende für Betrieb und Weiterentwicklung.",
     },
   },
   imprint: {
@@ -234,17 +254,17 @@ const de = {
   },
   dashboard: {
     kicker: "Übersicht",
-    title: "Job-Status auf einen Blick",
-    subtitle: "{active} aktive von {total} Jobs",
+    title: "Status deiner Alarme auf einen Blick",
+    subtitle: "{active} aktive von {total} Alarmen",
     loading: "Lade Dashboard-Daten...",
-    empty: "Noch keine Jobs angelegt. Erstelle deinen ersten Alarm-Job.",
-    loadFailed: "Dashboard-Jobs konnten nicht geladen werden.",
+    empty: "Du hast noch keinen Alarm erstellt. Lege jetzt deinen ersten Alarm an.",
+    loadFailed: "Die Alarme für das Dashboard konnten nicht geladen werden.",
     enabled: "Aktiv",
     disabled: "Deaktiviert",
     statusUnknown: "Unbekannt",
     actions: {
-      openJobs: "Job-Tabelle öffnen",
-      newJob: "Neuer Job",
+      openJobs: "Alarmliste öffnen",
+      newJob: "Neuer Alarm",
       view: "Ansehen",
       edit: "Bearbeiten",
     },
@@ -266,14 +286,15 @@ const de = {
     },
   },
   jobsList: {
-    title: "Jobs",
-    createJob: "Job erstellen",
-    includeDisabled: "Deaktivierte Jobs einbeziehen",
-    disabledSuccess: "Der Job wurde erfolgreich deaktiviert.",
-    loadFailed: "Jobs konnten nicht geladen werden.",
-    loading: "Lade Jobs...",
-    empty: "Keine Jobs gefunden.",
-    confirmDelete: "Diesen Job löschen? Er wird nur deaktiviert (Soft Delete).",
+    title: "Alarme",
+    createJob: "Alarm erstellen",
+    includeDisabled: "Deaktivierte Alarme einbeziehen",
+    disabledSuccess: "Der Alarm wurde erfolgreich deaktiviert.",
+    loadFailed: "Alarme konnten nicht geladen werden.",
+    loading: "Lade Alarme...",
+    empty: "Keine Alarme gefunden.",
+    confirmDelete:
+      "Diesen Alarm löschen? Er wird nur deaktiviert (Soft Delete).",
     table: {
       name: "Name",
       station: "Station",
@@ -290,10 +311,10 @@ const de = {
     deleting: "Lösche...",
   },
   jobForm: {
-    createTitle: "Job erstellen",
-    editTitle: "Job bearbeiten",
-    loadingJob: "Lade Job...",
-    jobNotFound: "Job nicht gefunden.",
+    createTitle: "Alarm erstellen",
+    editTitle: "Alarm bearbeiten",
+    loadingJob: "Lade Alarm...",
+    jobNotFound: "Alarm nicht gefunden.",
     fields: {
       name: "Name",
       station: "Station",
@@ -310,11 +331,13 @@ const de = {
         "alice{'@'}example.com, bob{'@'}example.com",
       recipientsHint:
         "Adressen mit Kommas, Semikolons oder Zeilenumbrüchen trennen.",
-      scheduleCron: "Zeitplan (5 Felder)",
-      scheduleCronPlaceholder: "*/15 * * * *",
-      scheduleCronHint: "Format: Minute Stunde Tag Monat Wochentag.",
-      scheduleCronCheckInfo: "Legt fest, wie oft Hochwasser geprüft wird.",
-      scheduleCronEditorError: "Zeitplan-Editor Hinweis: {message}",
+      scheduleCron: "Prüfintervall",
+      scheduleCronPlaceholder: "0 7,13,18 * * *",
+      scheduleCronHint:
+        "Optional als Cron-Ausdruck (Minute Stunde Tag Monat Wochentag).",
+      scheduleCronCheckInfo:
+        "Legt fest, wie oft auf neue Pegelwerte geprüft wird.",
+      scheduleCronEditorError: "Hinweis aus dem Intervall-Editor: {message}",
       repeatAlertsOnCheck: "Alarme bei jedem Check wiederholen",
       repeatAlertsOnCheckHint:
         "E-Mails werden immer bei Zustandswechseln gesendet. Aktivieren Sie dies, um zusätzlich bei jedem Check im Alarmzustand E-Mails zu senden.",
@@ -336,16 +359,16 @@ const de = {
     actions: {
       cancel: "Abbrechen",
       saveChanges: "Änderungen speichern",
-      saveCreate: "Job erstellen",
+      saveCreate: "Alarm erstellen",
       saving: "Speichere...",
     },
   },
   jobDetails: {
-    titleFallback: "Job-Details",
+    titleFallback: "Alarm-Details",
     back: "Zurück",
     edit: "Bearbeiten",
-    loadingJob: "Lade Job...",
-    jobNotFound: "Job nicht gefunden.",
+    loadingJob: "Lade Alarm...",
+    jobNotFound: "Alarm nicht gefunden.",
     fields: {
       station: "Station",
       water: "Gewässer",

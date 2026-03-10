@@ -1,11 +1,11 @@
 const en = {
   shell: {
-    appName: "Hochwasser",
-    appSection: "Operations Deck",
+    appName: "Pegel-Alarm",
+    appSection: "Your Alert Center",
     nav: {
       overview: "Dashboard",
-      jobs: "Jobs",
       account: "Account",
+      jobs: "Alerts",
     },
     actions: {
       signOut: "Sign out",
@@ -53,6 +53,9 @@ const en = {
       failed: "Account could not be deleted.",
     },
   },
+  donation: {
+    cta: "Buy me a coffee",
+  },
   auth: {
     login: {
       title: "Welcome back",
@@ -90,9 +93,10 @@ const en = {
     },
   },
   landing: {
-    kicker: "Flood early warning workspace",
-    title: "Monitor your stations and react before levels become critical.",
-    copy: "Hochwasser Alarm combines official station data, threshold-based alerting, and practical job controls in one focused dashboard.",
+    kicker: "Simple flood alerts for everyone",
+    title: "Get email alerts before water levels become critical.",
+    copy: "Choose a station, set your limit, and receive automatic notifications. This helps you react early when the situation gets serious.",
+    freeParagraph: "The service is completely free to use.",
     actions: {
       signIn: "Sign in",
       createAccount: "Create account",
@@ -103,21 +107,38 @@ const en = {
     },
     features: {
       alerting: {
-        title: "Threshold alerts that stay actionable",
-        copy: "Configure one job per station, set clear limits, and keep alert noise under control.",
+        title: "Clear alerts, less noise",
+        copy: "Set your own level threshold per station and receive messages when it truly matters.",
       },
       monitoring: {
-        title: "Live-oriented operational overview",
-        copy: "See job status, recent trends, and relevant context at a glance for faster decisions.",
+        title: "See everything at a glance",
+        copy: "The dashboard shows current levels, trends, and alert status in a way non-technical users can understand.",
       },
       sources: {
-        title: "Official source integration",
-        copy: "Station and water-level information is sourced from official public provider interfaces.",
+        title: "Data from Pegelonline",
+        copy: "We source station and water-level data directly from Pegelonline (WSV).",
+      },
+    },
+    steps: {
+      pickStation: {
+        title: "Pick a station",
+        copy: "Search by station name or river and select the right measuring point.",
+      },
+      setLimit: {
+        title: "Set your limit",
+        copy: "Define the water level in centimeters where you want to be alerted.",
+      },
+      getAlert: {
+        title: "Receive email alerts",
+        copy: "You get notified automatically when the level crosses your limit or the outlook gets worse.",
       },
     },
     footer: {
       source:
         "Informational support only. Always follow official warnings and emergency guidance.",
+      free: "The service is free to use.",
+      donate:
+        "If the free service helps you, consider a small donation to support hosting and further development.",
     },
   },
   imprint: {
@@ -231,18 +252,18 @@ const en = {
   },
   dashboard: {
     kicker: "Overview",
-    title: "Job status at a glance",
-    subtitle: "{active} active of {total} total jobs",
+    title: "Alert status at a glance",
+    subtitle: "{active} active of {total} total alerts",
     loading: "Loading dashboard data...",
     empty:
-      "No jobs configured yet. Create your first alert job to get started.",
-    loadFailed: "Could not load dashboard jobs.",
+      "No alerts configured yet. Create your first alert to get started.",
+    loadFailed: "Could not load dashboard alerts.",
     enabled: "Enabled",
     disabled: "Disabled",
     statusUnknown: "Unknown",
     actions: {
-      openJobs: "Open jobs table",
-      newJob: "New job",
+      openJobs: "Open alerts list",
+      newJob: "New alert",
       view: "View",
       edit: "Edit",
     },
@@ -264,14 +285,14 @@ const en = {
     },
   },
   jobsList: {
-    title: "Jobs",
-    createJob: "Create job",
-    includeDisabled: "Include disabled jobs",
-    disabledSuccess: "The job was disabled successfully.",
-    loadFailed: "Could not load jobs.",
-    loading: "Loading jobs...",
-    empty: "No jobs found.",
-    confirmDelete: "Delete this job? It will be disabled (soft delete).",
+    title: "Alerts",
+    createJob: "Create alert",
+    includeDisabled: "Include disabled alerts",
+    disabledSuccess: "The alert was disabled successfully.",
+    loadFailed: "Could not load alerts.",
+    loading: "Loading alerts...",
+    empty: "No alerts found.",
+    confirmDelete: "Delete this alert? It will be disabled (soft delete).",
     table: {
       name: "Name",
       station: "Station",
@@ -288,10 +309,10 @@ const en = {
     deleting: "Deleting...",
   },
   jobForm: {
-    createTitle: "Create job",
-    editTitle: "Edit job",
-    loadingJob: "Loading job...",
-    jobNotFound: "Job not found.",
+    createTitle: "Create alert",
+    editTitle: "Edit alert",
+    loadingJob: "Loading alert...",
+    jobNotFound: "Alert not found.",
     fields: {
       name: "Name",
       station: "Station",
@@ -308,11 +329,12 @@ const en = {
         "alice{'@'}example.com, bob{'@'}example.com",
       recipientsHint:
         "Separate addresses with commas, semicolons, or new lines.",
-      scheduleCron: "Time-schedule (5 fields)",
-      scheduleCronPlaceholder: "*/15 * * * *",
-      scheduleCronHint: "Format: minute hour day month weekday.",
-      scheduleCronCheckInfo: "Defines how often Hochwasser is checked.",
-      scheduleCronEditorError: "Time-schedule editor hint: {message}",
+      scheduleCron: "Check interval",
+      scheduleCronPlaceholder: "0 7,13,18 * * *",
+      scheduleCronHint:
+        "Optional as cron expression (minute hour day month weekday).",
+      scheduleCronCheckInfo: "Defines how often new water levels are checked.",
+      scheduleCronEditorError: "Interval editor hint: {message}",
       repeatAlertsOnCheck: "Repeat alerts on check",
       repeatAlertsOnCheckHint:
         "Emails are always sent on state changes. Enable this to also send emails on every check while still in an alerting state.",
@@ -334,16 +356,16 @@ const en = {
     actions: {
       cancel: "Cancel",
       saveChanges: "Save changes",
-      saveCreate: "Create job",
+      saveCreate: "Create alert",
       saving: "Saving...",
     },
   },
   jobDetails: {
-    titleFallback: "Job details",
+    titleFallback: "Alert details",
     back: "Back",
     edit: "Edit",
-    loadingJob: "Loading job...",
-    jobNotFound: "Job not found.",
+    loadingJob: "Loading alert...",
+    jobNotFound: "Alert not found.",
     fields: {
       station: "Station",
       water: "Water",
