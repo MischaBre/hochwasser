@@ -443,6 +443,40 @@ const de = {
     description: "Zurück zur Startseite gehen.",
     action: "Zur Startseite",
   },
+  seo: {
+    routes: {
+      landing: {
+        title: "Hochwasserwarnungen per E-Mail",
+        description:
+          "Pegel-Alarm überwacht offizielle Pegeldaten und sendet E-Mail-Warnungen, sobald dein Grenzwert erreicht wird.",
+      },
+      login: {
+        title: "Anmelden",
+        description: "Melde dich an, um deine Alarme und Kontoeinstellungen zu verwalten.",
+      },
+      register: {
+        title: "Konto erstellen",
+        description:
+          "Erstelle dein kostenloses Pegel-Alarm-Konto und starte mit automatischen Pegelwarnungen.",
+      },
+      imprint: {
+        title: "Impressum",
+        description: "Rechtliche Angaben und Kontaktdaten zu Pegel-Alarm.",
+      },
+      privacy: {
+        title: "Datenschutzerklärung",
+        description:
+          "So verarbeitet Pegel-Alarm personenbezogene Daten und schützt deine Privatsphäre.",
+      },
+      app: {
+        description: "Verwalte deine Pegel-Alarme in der Pegel-Alarm-Anwendung.",
+      },
+      notFound: {
+        title: "Seite nicht gefunden",
+        description: "Diese Seite existiert bei Pegel-Alarm nicht.",
+      },
+    },
+  },
   validation: {
     nameRequired: "Name ist erforderlich.",
     nameTooLong: "Name darf höchstens 120 Zeichen haben.",

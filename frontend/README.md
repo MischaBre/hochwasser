@@ -5,7 +5,7 @@ Vue 3 + TypeScript frontend for auth and job management.
 ## Setup
 
 1. Copy `.env.example` to `.env`
-2. Set your Supabase and API values (`VITE_*`)
+2. Set your Supabase, API, and site URL values (`VITE_*`)
 3. Install dependencies
 
 ```bash
@@ -33,3 +33,6 @@ make up-dev
 ```bash
 npm run build
 ```
+
+`npm run build` automatically generates `public/robots.txt` and `public/sitemap.xml`.
+Set `VITE_SITE_URL` to your production domain so canonical URLs and sitemap entries are correct.

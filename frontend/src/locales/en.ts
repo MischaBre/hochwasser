@@ -440,6 +440,39 @@ const en = {
     description: "Try heading back to the start page.",
     action: "Go to start page",
   },
+  seo: {
+    routes: {
+      landing: {
+        title: "Flood Alerts by Email",
+        description:
+          "Pegel-Alarm monitors official river gauge data and sends email alerts when your threshold is reached.",
+      },
+      login: {
+        title: "Sign In",
+        description: "Sign in to manage your flood alert jobs and account settings.",
+      },
+      register: {
+        title: "Create Account",
+        description:
+          "Create your free Pegel-Alarm account and start monitoring water levels with automatic alerts.",
+      },
+      imprint: {
+        title: "Imprint",
+        description: "Legal notice and provider details for Pegel-Alarm.",
+      },
+      privacy: {
+        title: "Privacy Policy",
+        description: "How Pegel-Alarm processes personal data and protects your privacy.",
+      },
+      app: {
+        description: "Manage your water-level alert jobs in the Pegel-Alarm application.",
+      },
+      notFound: {
+        title: "Page Not Found",
+        description: "This page does not exist on Pegel-Alarm.",
+      },
+    },
+  },
   validation: {
     nameRequired: "Name is required.",
     nameTooLong: "Name must be 120 characters or fewer.",
