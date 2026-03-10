@@ -114,6 +114,8 @@ services:
         condition: service_completed_successfully
     environment:
       API_DATABASE_URL: "${API_DATABASE_URL:-postgresql://hochwasser:hochwasser@postgres:5432/hochwasser}"
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL}
       SUPABASE_ISSUER: ${SUPABASE_ISSUER}
       SUPABASE_AUDIENCE: "${SUPABASE_AUDIENCE:-authenticated}"
