@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from http import HTTPStatus
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -34,25 +33,12 @@ def delete_auth_user(
     except HTTPError as exc:
         if exc.code == HTTPStatus.NOT_FOUND:
             return
-        detail = "Supabase admin delete failed"
-        try:
-            raw_body = exc.read()
-            if raw_body:
-                payload = json.loads(raw_body.decode("utf-8"))
-                if isinstance(payload, dict) and isinstance(payload.get("msg"), str):
-                    detail = payload["msg"]
-                elif isinstance(payload, dict) and isinstance(
-                    payload.get("error_description"), str
-                ):
-                    detail = payload["error_description"]
-        except Exception:
-            pass
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=detail,
+            detail="Supabase admin delete failed",
         ) from exc
     except URLError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Supabase admin endpoint unavailable: {exc}",
+            detail="Supabase admin endpoint unavailable",
         ) from exc

@@ -91,7 +91,7 @@ def ensure_membership(
 
 
 def list_jobs(
-    *, database_url: str, org_id: UUID, include_disabled: bool
+    *, database_url: str, actor: Actor, include_disabled: bool
 ) -> list[dict[str, Any]]:
     query = """
         SELECT
@@ -114,7 +114,10 @@ def list_jobs(
         FROM public.alert_jobs
         WHERE org_id = %s
     """
-    params: list[Any] = [org_id]
+    params: list[Any] = [actor.org_id]
+    if actor.role != "admin":
+        query += " AND created_by = %s"
+        params.append(actor.user_id)
     if not include_disabled:
         query += " AND enabled = TRUE"
     query += " ORDER BY created_at DESC"
@@ -529,8 +532,19 @@ def soft_delete_job(*, database_url: str, actor: Actor, job_uuid: str) -> None:
 
 
 def get_job_status(
-    *, database_url: str, org_id: UUID, job_uuid: str
+    *, database_url: str, actor: Actor, job_uuid: str
 ) -> dict[str, Any] | None:
+    existing = get_job(
+        database_url=database_url, org_id=actor.org_id, job_uuid=job_uuid
+    )
+    if existing is None:
+        return None
+    if not can_manage_job(actor, existing["created_by"]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only job owner or admin can view this job",
+        )
+
     with psycopg.connect(database_url) as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
@@ -551,30 +565,30 @@ def get_job_status(
                     ON s.job_uuid = j.job_uuid
                 WHERE j.org_id = %s AND j.job_uuid = %s
                 """,
-                (org_id, job_uuid),
+                (actor.org_id, job_uuid),
             )
             return cur.fetchone()
 
 
 def list_job_outbox(
-    *, database_url: str, org_id: UUID, job_uuid: str, limit: int, offset: int
+    *, database_url: str, actor: Actor, job_uuid: str, limit: int, offset: int
 ) -> list[dict[str, Any]]:
+    existing = get_job(
+        database_url=database_url, org_id=actor.org_id, job_uuid=job_uuid
+    )
+    if existing is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found",
+        )
+    if not can_manage_job(actor, existing["created_by"]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only job owner or admin can view this job",
+        )
+
     with psycopg.connect(database_url) as conn:
         with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
-                """
-                SELECT 1
-                FROM public.alert_jobs
-                WHERE org_id = %s AND job_uuid = %s
-                """,
-                (org_id, job_uuid),
-            )
-            if cur.fetchone() is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Job not found",
-                )
-
             cur.execute(
                 """
                 SELECT
@@ -595,7 +609,7 @@ def list_job_outbox(
                 ORDER BY e.created_at DESC
                 LIMIT %s OFFSET %s
                 """,
-                (org_id, job_uuid, limit, offset),
+                (actor.org_id, job_uuid, limit, offset),
             )
             return list(cur.fetchall())
 

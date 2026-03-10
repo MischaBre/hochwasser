@@ -38,7 +38,7 @@ class JwtVerifier:
         except jwt.PyJWTError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid bearer token: {exc}",
+                detail="Invalid bearer token",
             ) from exc
 
         subject = payload.get("sub")

@@ -172,7 +172,7 @@ def _fetch_stations_from_pegelonline() -> tuple[StationSummary, ...]:
     except (urllib_error.URLError, TimeoutError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Could not load stations from Pegelonline: {exc}",
+            detail="Could not load stations from Pegelonline",
         ) from exc
 
     if not isinstance(payload, list):
@@ -250,7 +250,7 @@ def _fetch_station_measurements_from_pegelonline(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=(
                 f"Could not load measurements for station {station_uuid} "
-                f"from Pegelonline: {exc}"
+                "from Pegelonline"
             ),
         ) from exc
 
