@@ -36,3 +36,4 @@ npm run build
 
 `npm run build` automatically generates `public/robots.txt` and `public/sitemap.xml`.
 Set `VITE_SITE_URL` to your production domain so canonical URLs and sitemap entries are correct.
+In CI builds, the sitemap generator fails if `VITE_SITE_URL` is missing to prevent accidental `localhost` URLs.

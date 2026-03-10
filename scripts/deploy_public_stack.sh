@@ -23,6 +23,7 @@ required_vars=(
   VITE_API_BASE_URL
   VITE_SUPABASE_URL
   VITE_SUPABASE_PUBLISHABLE_KEY
+  VITE_SITE_URL
   DATABASE_URL
   API_DATABASE_URL
   FLYWAY_URL
@@ -47,6 +48,11 @@ done
 
 if [[ "${VITE_API_BASE_URL}" != "https://${PUBLIC_API_DOMAIN}" ]]; then
   echo "VITE_API_BASE_URL must match https://${PUBLIC_API_DOMAIN}"
+  exit 1
+fi
+
+if [[ "${VITE_SITE_URL}" != "https://${PUBLIC_APP_DOMAIN}" ]]; then
+  echo "VITE_SITE_URL must match https://${PUBLIC_APP_DOMAIN}"
   exit 1
 fi
 

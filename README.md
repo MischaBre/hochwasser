@@ -142,6 +142,7 @@ Frontend settings:
 - `VITE_API_BASE_URL`: API base URL consumed by Vite frontend (`http://localhost:8080` for local compose)
 - `VITE_SUPABASE_URL`: Supabase project URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY`: Supabase publishable key used by browser auth
+- `VITE_SITE_URL`: canonical site URL used for sitemap/canonical tags (`https://<PUBLIC_APP_DOMAIN>` in production)
 
 Public runtime settings:
 
@@ -191,6 +192,7 @@ cp .env.prod.example .env
 
 - `PUBLIC_APP_DOMAIN`, `PUBLIC_APP_WWW_DOMAIN`, `PUBLIC_API_DOMAIN`
 - `API_CORS_ALLOW_ORIGINS=https://<PUBLIC_APP_DOMAIN>`
+- `VITE_SITE_URL=https://<PUBLIC_APP_DOMAIN>`
 
 3. Start the public stack:
 
