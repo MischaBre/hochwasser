@@ -73,7 +73,7 @@ const openPrimaryCta = () => {
       <header class="landing-header">
         <RouterLink class="landing-logo" to="/">
           <Waves class="h-5 w-5" />
-          <span>Hochwasser Alarm</span>
+          <span>Pegel-Alarm</span>
         </RouterLink>
         <div class="landing-actions">
           <label class="sr-only" for="landing-locale">{{
@@ -113,6 +113,7 @@ const openPrimaryCta = () => {
           <p class="hero-kicker">{{ t("landing.kicker") }}</p>
           <h1 class="hero-title">{{ t("landing.title") }}</h1>
           <p class="hero-copy">{{ t("landing.copy") }}</p>
+          <p class="hero-copy">{{ t("landing.freeParagraph") }}</p>
 
           <div class="hero-ctas">
             <Button @click="openPrimaryCta">{{
@@ -143,10 +144,29 @@ const openPrimaryCta = () => {
             <p>{{ t("landing.features.sources.copy") }}</p>
           </article>
         </section>
+
+        <section class="steps-grid" aria-label="how it works">
+          <article class="step-card">
+            <p class="step-number">1</p>
+            <h2>{{ t("landing.steps.pickStation.title") }}</h2>
+            <p>{{ t("landing.steps.pickStation.copy") }}</p>
+          </article>
+          <article class="step-card">
+            <p class="step-number">2</p>
+            <h2>{{ t("landing.steps.setLimit.title") }}</h2>
+            <p>{{ t("landing.steps.setLimit.copy") }}</p>
+          </article>
+          <article class="step-card">
+            <p class="step-number">3</p>
+            <h2>{{ t("landing.steps.getAlert.title") }}</h2>
+            <p>{{ t("landing.steps.getAlert.copy") }}</p>
+          </article>
+        </section>
       </main>
 
       <footer class="landing-footer">
         <p>{{ t("landing.footer.source") }}</p>
+        <p class="landing-donate-copy">{{ t("landing.footer.donate") }}</p>
         <div class="landing-footer-links">
           <a href="https://pegelonline.wsv.de" target="_blank" rel="noreferrer"
             >Pegelonline</a
@@ -354,14 +374,14 @@ const openPrimaryCta = () => {
 
 .hero-title {
   margin: 0.75rem 0 0;
-  max-width: 24ch;
+  max-width: 28.8ch;
   font-size: clamp(1.9rem, 5vw, 3rem);
   line-height: 1.1;
 }
 
 .hero-copy {
   margin: 1rem 0 0;
-  max-width: 54ch;
+  max-width: 64.8ch;
   font-size: 1rem;
   color: hsl(var(--muted-foreground));
   line-height: 1.6;
@@ -379,6 +399,11 @@ const openPrimaryCta = () => {
   gap: 0.85rem;
 }
 
+.steps-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
 .feature-card {
   border: 1px solid hsl(var(--border));
   border-radius: 0.9rem;
@@ -392,6 +417,34 @@ const openPrimaryCta = () => {
 }
 
 .feature-card p {
+  margin: 0.5rem 0 0;
+  font-size: 0.92rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
+}
+
+.step-card {
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.9rem;
+  padding: 1rem;
+  background: hsl(var(--card));
+}
+
+.step-number {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.step-card h2 {
+  margin: 0.55rem 0 0;
+  font-size: 1rem;
+}
+
+.step-card p {
   margin: 0.5rem 0 0;
   font-size: 0.92rem;
   color: hsl(var(--muted-foreground));
@@ -417,6 +470,10 @@ const openPrimaryCta = () => {
 
 .landing-footer p {
   margin: 0;
+}
+
+.landing-donate-copy {
+  color: hsl(var(--foreground));
 }
 
 .landing-footer-links {
@@ -498,6 +555,10 @@ const openPrimaryCta = () => {
   }
 
   .feature-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .steps-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 

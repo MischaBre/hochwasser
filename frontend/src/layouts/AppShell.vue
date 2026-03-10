@@ -114,33 +114,16 @@ const navClass = (active: boolean): string => {
         <RouterView />
       </main>
 
-      <footer class="mt-auto border-t pt-4 text-xs text-muted-foreground">
-        <div
-          class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-        >
-          <p class="max-w-xl leading-relaxed">{{ t("shell.footer.source") }}</p>
-          <div
-            class="flex flex-wrap items-center gap-2 sm:justify-end sm:gap-3"
+      <footer class="landing-footer">
+        <p>{{ t("landing.footer.source") }}</p>
+        <p class="landing-donate-copy">{{ t("landing.footer.donate") }}</p>
+        <div class="landing-footer-links">
+          <a href="https://pegelonline.wsv.de" target="_blank" rel="noreferrer"
+            >Pegelonline</a
           >
-            <a
-              class="font-semibold text-foreground hover:underline"
-              href="https://pegelonline.wsv.de"
-              target="_blank"
-              rel="noreferrer"
-              >Pegelonline</a
-            >
-            <RouterLink
-              class="font-semibold text-foreground hover:underline"
-              to="/impressum"
-              >{{ t("shell.footer.imprint") }}</RouterLink
-            >
-            <RouterLink
-              class="font-semibold text-foreground hover:underline"
-              to="/datenschutz"
-              >{{ t("shell.footer.privacy") }}</RouterLink
-            >
-            <BuyMeCoffeeButton />
-          </div>
+          <RouterLink to="/impressum">{{ t("landing.actions.imprint") }}</RouterLink>
+          <RouterLink to="/datenschutz">{{ t("landing.actions.privacy") }}</RouterLink>
+          <BuyMeCoffeeButton />
         </div>
       </footer>
     </div>
@@ -169,5 +152,41 @@ footer :deep(.buy-me-coffee-slot) {
 footer :deep(.bmc-button) {
   font-size: 0.75rem;
   padding: 0.45rem 0.65rem;
+}
+
+.landing-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  border-top: 1px solid hsl(var(--border));
+  padding-top: 1rem;
+  font-size: 0.82rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.landing-footer p {
+  margin: 0;
+}
+
+.landing-donate-copy {
+  color: hsl(var(--foreground));
+}
+
+.landing-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.landing-footer-links a {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.landing-footer-links a:hover {
+  text-decoration: underline;
 }
 </style>
