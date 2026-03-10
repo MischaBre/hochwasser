@@ -21,6 +21,10 @@ def _settings() -> ApiSettings:
         initial_admin_user_id=None,
         auto_provision_members=True,
         cors_allow_origins=(),
+        supabase_url="https://example.test",
+        supabase_service_role_key="service-role-key",
+        max_active_jobs_per_user=10,
+        max_alarm_recipients_per_job=5,
     )
 
 

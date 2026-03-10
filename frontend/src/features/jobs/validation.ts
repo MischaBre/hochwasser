@@ -44,6 +44,7 @@ export const parseRecipients = (input: string): string[] => {
 }
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const maxRecipientsPerJob = 5
 
 const cronFieldPattern = /^[\d*/,-]+$/
 
@@ -87,7 +88,7 @@ export const validateJobForm = (state: JobFormState): JobFormErrors => {
 
   if (recipients.length < 1) {
     errors.recipients = i18n.global.t('validation.recipientsRequired')
-  } else if (recipients.length > 25) {
+  } else if (recipients.length > maxRecipientsPerJob) {
     errors.recipients = i18n.global.t('validation.recipientsTooMany')
   } else if (invalidRecipient) {
     errors.recipients = i18n.global.t('validation.recipientsInvalidAddress', { email: invalidRecipient })

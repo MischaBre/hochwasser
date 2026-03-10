@@ -18,7 +18,9 @@ from api_app.auth import (
 from api_app.config import ApiSettings, get_settings
 from api_app.db import (
     Actor,
+    count_active_jobs_for_user,
     create_job,
+    delete_user_account_data,
     ensure_membership,
     get_job_status,
     list_job_audit_log,
@@ -49,6 +51,7 @@ from api_app.schemas import (
     StationSummaryResponse,
 )
 from api_app.stations import list_station_measurements, list_stations
+from api_app.supabase_admin import delete_auth_user
 
 app = FastAPI(title="Hochwasser API", version="0.1.0")
 
@@ -119,8 +122,40 @@ def health_ready(settings: SettingsDep) -> dict[str, str]:
 
 
 @app.get("/v1/me", response_model=MeResponse)
-def me(actor: ActorDep) -> MeResponse:
-    return MeResponse(user_id=actor.user_id, org_id=actor.org_id, role=actor.role)
+def me(actor: ActorDep, settings: SettingsDep) -> MeResponse:
+    active_jobs_count = count_active_jobs_for_user(
+        database_url=settings.database_url,
+        actor=actor,
+    )
+    return MeResponse(
+        user_id=actor.user_id,
+        org_id=actor.org_id,
+        role=actor.role,
+        active_jobs_count=active_jobs_count,
+        max_active_jobs=settings.max_active_jobs_per_user,
+        max_alarm_recipients_per_job=settings.max_alarm_recipients_per_job,
+    )
+
+
+def _raise_validation_error(field: str, message: str) -> None:
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail=[
+            {
+                "loc": ["body", field],
+                "msg": message,
+                "type": "value_error",
+            }
+        ],
+    )
+
+
+def _enforce_recipients_limit(*, recipients: list[str], max_recipients: int) -> None:
+    if len(recipients) > max_recipients:
+        _raise_validation_error(
+            "recipients",
+            f"recipients must contain at most {max_recipients} addresses",
+        )
 
 
 @app.get("/v1/jobs", response_model=list[JobResponse])
@@ -183,6 +218,23 @@ def post_job(
     actor: ActorDep,
     settings: SettingsDep,
 ) -> JobResponse:
+    _enforce_recipients_limit(
+        recipients=payload.recipients,
+        max_recipients=settings.max_alarm_recipients_per_job,
+    )
+    active_jobs_count = count_active_jobs_for_user(
+        database_url=settings.database_url,
+        actor=actor,
+    )
+    if active_jobs_count >= settings.max_active_jobs_per_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "Active jobs limit reached "
+                f"({settings.max_active_jobs_per_user} max per user)"
+            ),
+        )
+
     created = create_job(
         database_url=settings.database_url, actor=actor, payload=payload
     )
@@ -196,6 +248,12 @@ def patch_job(
     actor: ActorDep,
     settings: SettingsDep,
 ) -> JobResponse:
+    if payload.recipients is not None:
+        _enforce_recipients_limit(
+            recipients=payload.recipients,
+            max_recipients=settings.max_alarm_recipients_per_job,
+        )
+
     updated = update_job(
         database_url=settings.database_url,
         actor=actor,
@@ -212,6 +270,23 @@ def delete_job(
     settings: SettingsDep,
 ) -> Response:
     soft_delete_job(database_url=settings.database_url, actor=actor, job_uuid=job_uuid)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@app.delete("/v1/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(actor: ActorDep, settings: SettingsDep) -> Response:
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Account deletion is not configured",
+        )
+
+    delete_user_account_data(database_url=settings.database_url, actor=actor)
+    delete_auth_user(
+        supabase_url=settings.supabase_url,
+        service_role_key=settings.supabase_service_role_key,
+        user_id=actor.user_id,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -36,6 +36,36 @@ export const useAuthStore = defineStore('auth', () => {
     await supabase.auth.signOut()
   }
 
+  const reauthenticate = async (currentPassword: string) => {
+    const email = userEmail.value.trim()
+    if (!email) {
+      throw new Error('No authenticated user email available.')
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password: currentPassword,
+    })
+
+    if (error) {
+      throw error
+    }
+  }
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    loading.value = true
+
+    try {
+      await reauthenticate(currentPassword)
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) {
+        throw error
+      }
+    } finally {
+      loading.value = false
+    }
+  }
+
   const signIn = async (email: string, password: string) => {
     loading.value = true
 
@@ -91,6 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
     signIn,
     signUp,
     signOut,
+    changePassword,
     userEmail,
     userId,
   }

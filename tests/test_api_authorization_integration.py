@@ -202,6 +202,10 @@ def _client_for_actor(db_url: str, actor: Actor) -> Iterator[TestClient]:
         initial_admin_user_id=None,
         auto_provision_members=False,
         cors_allow_origins=(),
+        supabase_url="https://example.test",
+        supabase_service_role_key="service-role-key",
+        max_active_jobs_per_user=10,
+        max_alarm_recipients_per_job=5,
     )
 
     app.dependency_overrides[_settings_dep] = lambda: settings

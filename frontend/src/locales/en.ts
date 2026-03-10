@@ -5,6 +5,7 @@ const en = {
     nav: {
       overview: "Dashboard",
       jobs: "Jobs",
+      account: "Account",
     },
     actions: {
       signOut: "Sign out",
@@ -19,6 +20,37 @@ const en = {
         "Data source and station metadata are provided by official public sources.",
       imprint: "Imprint",
       privacy: "Privacy policy",
+    },
+  },
+  account: {
+    title: "Account & Security",
+    subtitle: "Manage your password, account deletion, and current usage limits.",
+    limits: {
+      activeJobs: "Active alerts: {current} of {max}",
+      maxRecipients: "Maximum recipients per alert: {max}",
+    },
+    password: {
+      title: "Change password",
+      current: "Current password",
+      new: "New password",
+      confirm: "Confirm new password",
+      submit: "Update password",
+      success: "Password updated successfully.",
+      errors: {
+        mismatch: "The new passwords do not match.",
+        minLength: "The new password must be at least 8 characters long.",
+        failed: "Password could not be updated.",
+      },
+    },
+    delete: {
+      title: "Delete account",
+      warning:
+        "Warning: This action permanently removes your account and associated data.",
+      instructions:
+        "Type DELETE in the field to confirm. Your account will then be permanently deleted.",
+      confirmLabel: "Confirmation",
+      submit: "Permanently delete account",
+      failed: "Account could not be deleted.",
     },
   },
   auth: {
@@ -50,8 +82,11 @@ const en = {
       backToLogin: "Back to login",
       passwordsMismatch: "Passwords do not match.",
       createdCheckInbox:
-        "Account created. Check your inbox to confirm your email, then sign in.",
-      failedFallback: "Registration failed. Please try again.",
+        "If the address can be used, we will send an email with next steps.",
+      failedFallback:
+        "Registration received. If the address can be used, we will send an email with next steps.",
+      rateLimited:
+        "Too many registration attempts. Please wait {minutes} minutes and try again.",
     },
   },
   landing: {
@@ -394,7 +429,7 @@ const en = {
     alertRecipientInvalid:
       "Service-alert-recipient must be a valid email address.",
     recipientsRequired: "At least one recipient is required.",
-    recipientsTooMany: "You can provide at most 25 recipients.",
+    recipientsTooMany: "You can provide at most 5 recipients.",
     recipientsInvalidAddress: "Invalid recipient address: {email}",
     localeUnsupported: "Locale must be either German or English.",
     scheduleRequired: "Time-schedule is required.",

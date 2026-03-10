@@ -20,6 +20,19 @@ def _bool_env(key: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _int_env(key: str, default: int, *, minimum: int = 1) -> int:
+    raw = os.getenv(key)
+    if raw is None:
+        return default
+    try:
+        value = int(raw.strip())
+    except ValueError as exc:
+        raise ValueError(f"Invalid integer for {key}: {raw}") from exc
+    if value < minimum:
+        raise ValueError(f"{key} must be >= {minimum}")
+    return value
+
+
 @dataclass(frozen=True)
 class ApiSettings:
     database_url: str
@@ -30,6 +43,10 @@ class ApiSettings:
     initial_admin_user_id: UUID | None
     auto_provision_members: bool
     cors_allow_origins: tuple[str, ...]
+    supabase_url: str
+    supabase_service_role_key: str
+    max_active_jobs_per_user: int
+    max_alarm_recipients_per_job: int
 
 
 @lru_cache(maxsize=1)
@@ -52,4 +69,8 @@ def get_settings() -> ApiSettings:
         initial_admin_user_id=initial_admin_user_id,
         auto_provision_members=_bool_env("API_AUTO_PROVISION_MEMBERS", True),
         cors_allow_origins=cors_allow_origins,
+        supabase_url=os.getenv("SUPABASE_URL", "").strip(),
+        supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip(),
+        max_active_jobs_per_user=_int_env("API_MAX_ACTIVE_JOBS_PER_USER", 10),
+        max_alarm_recipients_per_job=_int_env("API_MAX_ALARM_RECIPIENTS_PER_JOB", 5),
     )

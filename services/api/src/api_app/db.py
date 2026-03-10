@@ -13,6 +13,7 @@ from psycopg.rows import dict_row
 from api_app.schemas import JobCreateRequest, JobUpdateRequest
 
 Role = Literal["admin", "member"]
+SYSTEM_USER_ID = UUID("00000000-0000-0000-0000-000000000000")
 
 
 @dataclass(frozen=True)
@@ -84,6 +85,8 @@ def ensure_membership(
                     (org_id, user_id, role, now, now),
                 )
                 inserted = cur.fetchone()
+                if inserted is None:
+                    raise RuntimeError("failed to ensure membership")
                 return Actor(user_id=user_id, org_id=org_id, role=inserted["role"])
 
 
@@ -221,6 +224,107 @@ def create_job(
             return created
 
 
+def count_active_jobs_for_user(*, database_url: str, actor: Actor) -> int:
+    with psycopg.connect(database_url) as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                SELECT count(*) AS total
+                FROM public.alert_jobs
+                WHERE org_id = %s
+                  AND created_by = %s
+                  AND enabled = TRUE
+                """,
+                (actor.org_id, actor.user_id),
+            )
+            row = cur.fetchone()
+            return int(row["total"]) if row else 0
+
+
+def delete_user_account_data(*, database_url: str, actor: Actor) -> None:
+    now = datetime.now(tz=timezone.utc)
+
+    with psycopg.connect(database_url) as conn:
+        with conn.transaction():
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT role
+                    FROM public.organization_members
+                    WHERE org_id = %s AND user_id = %s
+                    FOR UPDATE
+                    """,
+                    (actor.org_id, actor.user_id),
+                )
+                member_row = cur.fetchone()
+                if member_row is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Organization member not found",
+                    )
+
+                if member_row["role"] == "admin":
+                    cur.execute(
+                        """
+                        SELECT count(*) AS total
+                        FROM public.organization_members
+                        WHERE org_id = %s AND role = 'admin'
+                        """,
+                        (actor.org_id,),
+                    )
+                    admins_row = cur.fetchone()
+                    admin_total = int(admins_row["total"]) if admins_row else 0
+                    if admin_total <= 1:
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail="Cannot delete the last admin in organization",
+                        )
+
+                cur.execute(
+                    """
+                    UPDATE public.alert_jobs
+                    SET updated_by = %s,
+                        updated_at = %s
+                    WHERE org_id = %s
+                      AND updated_by = %s
+                    """,
+                    (SYSTEM_USER_ID, now, actor.org_id, actor.user_id),
+                )
+
+                cur.execute(
+                    """
+                    DELETE FROM public.job_audit_log
+                    WHERE org_id = %s AND actor_user_id = %s
+                    """,
+                    (actor.org_id, actor.user_id),
+                )
+
+                cur.execute(
+                    """
+                    DELETE FROM public.membership_audit_log
+                    WHERE org_id = %s
+                      AND (actor_user_id = %s OR target_user_id = %s)
+                    """,
+                    (actor.org_id, actor.user_id, actor.user_id),
+                )
+
+                cur.execute(
+                    """
+                    DELETE FROM public.alert_jobs
+                    WHERE org_id = %s AND created_by = %s
+                    """,
+                    (actor.org_id, actor.user_id),
+                )
+
+                cur.execute(
+                    """
+                    DELETE FROM public.organization_members
+                    WHERE org_id = %s AND user_id = %s
+                    """,
+                    (actor.org_id, actor.user_id),
+                )
+
+
 def get_job(*, database_url: str, org_id: UUID, job_uuid: str) -> dict[str, Any] | None:
     with psycopg.connect(database_url) as conn:
         with conn.cursor(row_factory=dict_row) as cur:
@@ -279,7 +383,7 @@ def update_job(
         return existing
 
     now = datetime.now(tz=timezone.utc)
-    update_fields: list[sql.Composed] = []
+    update_fields: list[Any] = []
     values: list[Any] = []
 
     for key in (
