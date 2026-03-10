@@ -1,3 +1,9 @@
+<script setup lang="ts">
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
+</script>
+
 <template>
   <a
     class="bmc-button"
@@ -6,7 +12,7 @@
     rel="noreferrer"
   >
     <span aria-hidden="true">☕</span>
-    <span>Buy me a coffee</span>
+    <span>{{ t("donation.cta") }}</span>
   </a>
 </template>
 

@@ -53,7 +53,7 @@ const form = reactive<JobFormState>({
   recipients: "",
   alert_recipient: "",
   locale: "de",
-  schedule_cron: "*/15 * * * *",
+  schedule_cron: "0 7,13,18 * * *",
   repeat_alerts_on_check: false,
   enabled: true,
 });
