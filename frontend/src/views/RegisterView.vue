@@ -24,6 +24,35 @@ const passwordVisible = ref(false)
 const confirmPasswordVisible = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+const rateLimitStorageKey = 'register.attempts'
+const rateLimitWindowMs = 15 * 60 * 1000
+const rateLimitMaxAttempts = 5
+
+const getRecentRegisterAttempts = (): number[] => {
+  const raw = localStorage.getItem(rateLimitStorageKey)
+  if (!raw) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+
+    const now = Date.now()
+    return parsed
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+      .filter((timestamp) => now - timestamp <= rateLimitWindowMs)
+  } catch {
+    return []
+  }
+}
+
+const trackRegisterAttempt = () => {
+  const nextAttempts = [...getRecentRegisterAttempts(), Date.now()]
+  localStorage.setItem(rateLimitStorageKey, JSON.stringify(nextAttempts))
+}
 
 const goLogin = () => {
   router.push('/login')
@@ -38,18 +67,22 @@ const submit = async () => {
     return
   }
 
+  const recentAttempts = getRecentRegisterAttempts()
+  if (recentAttempts.length >= rateLimitMaxAttempts) {
+    errorMessage.value = t('auth.register.rateLimited', { minutes: 15 })
+    return
+  }
+
+  trackRegisterAttempt()
+
   try {
-    const data = await authStore.signUp(email.value.trim(), password.value)
-
-    if (data.session) {
-      await router.push('/app')
-      return
-    }
-
+    await authStore.signUp(email.value.trim(), password.value)
     successMessage.value = t('auth.register.createdCheckInbox')
   } catch (error) {
-    const message = error instanceof Error ? error.message : t('auth.register.failedFallback')
-    errorMessage.value = message
+    if (error instanceof Error) {
+      console.error('Registration attempt failed', error)
+    }
+    errorMessage.value = t('auth.register.failedFallback')
   }
 }
 </script>

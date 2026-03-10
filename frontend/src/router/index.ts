@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import AppShell from "@/layouts/AppShell.vue";
+import AccountSettingsView from "@/views/AccountSettingsView.vue";
 import DashboardView from "@/views/DashboardView.vue";
 import JobDetailsView from "@/views/JobDetailsView.vue";
 import JobFormView from "@/views/JobFormView.vue";
@@ -51,6 +52,12 @@ const router = createRouter({
           path: "jobs/:jobUuid",
           name: "job-details",
           component: JobDetailsView,
+          meta: { requiresAuth: true },
+        },
+        {
+          path: "account",
+          name: "account",
+          component: AccountSettingsView,
           meta: { requiresAuth: true },
         },
       ],

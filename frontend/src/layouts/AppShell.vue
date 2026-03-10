@@ -18,6 +18,7 @@ const { locale, t } = useI18n();
 
 const overviewActive = computed(() => route.path === "/app");
 const jobsActive = computed(() => route.path.startsWith("/app/jobs"));
+const accountActive = computed(() => route.path.startsWith("/app/account"));
 
 const localeModel = computed({
   get: () => locale.value,
@@ -63,6 +64,9 @@ const navClass = (active: boolean): string => {
             <RouterLink :class="navClass(jobsActive)" to="/app/jobs">{{
               t("shell.nav.jobs")
             }}</RouterLink>
+            <RouterLink :class="navClass(accountActive)" to="/app/account">{{
+              t("shell.nav.account")
+            }}</RouterLink>
           </nav>
         </div>
         <div
@@ -107,6 +111,9 @@ const navClass = (active: boolean): string => {
         }}</RouterLink>
         <RouterLink :class="navClass(jobsActive)" to="/app/jobs">{{
           t("shell.nav.jobs")
+        }}</RouterLink>
+        <RouterLink :class="navClass(accountActive)" to="/app/account">{{
+          t("shell.nav.account")
         }}</RouterLink>
       </nav>
 

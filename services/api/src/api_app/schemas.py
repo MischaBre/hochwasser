@@ -25,7 +25,7 @@ class JobBaseRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     station_uuid: str = Field(min_length=1, max_length=120)
     limit_cm: float = Field(gt=-10000, lt=100000)
-    recipients: list[str] = Field(min_length=1, max_length=25)
+    recipients: list[str] = Field(min_length=1, max_length=200)
     alert_recipient: str = Field(min_length=3, max_length=254)
     locale: Literal["de", "en"]
     schedule_cron: str
@@ -73,7 +73,7 @@ class JobUpdateRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     station_uuid: str | None = Field(default=None, min_length=1, max_length=120)
     limit_cm: float | None = Field(default=None, gt=-10000, lt=100000)
-    recipients: list[str] | None = Field(default=None, min_length=1, max_length=25)
+    recipients: list[str] | None = Field(default=None, min_length=1, max_length=200)
     alert_recipient: str | None = Field(default=None, min_length=3, max_length=254)
     locale: Literal["de", "en"] | None = None
     schedule_cron: str | None = None
@@ -143,6 +143,9 @@ class MeResponse(BaseModel):
     user_id: UUID
     org_id: UUID
     role: Literal["admin", "member"]
+    active_jobs_count: int
+    max_active_jobs: int
+    max_alarm_recipients_per_job: int
 
 
 class JobStatusResponse(BaseModel):

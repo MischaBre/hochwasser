@@ -4,6 +4,7 @@ const de = {
     appSection: "Deine Alarmzentrale",
     nav: {
       overview: "Dashboard",
+      account: "Konto",
       jobs: "Alarme",
     },
     actions: {
@@ -19,6 +20,37 @@ const de = {
         "Messdaten und Stationsinfos stammen aus offiziellen öffentlichen Quellen.",
       imprint: "Impressum",
       privacy: "Datenschutzerklärung",
+    },
+  },
+  account: {
+    title: "Konto & Sicherheit",
+    subtitle: "Verwalte dein Passwort, Kontolöschung und aktuelle Nutzungsgrenzen.",
+    limits: {
+      activeJobs: "Aktive Alarme: {current} von {max}",
+      maxRecipients: "Maximale Alarm-Empfänger pro Alarm: {max}",
+    },
+    password: {
+      title: "Passwort ändern",
+      current: "Aktuelles Passwort",
+      new: "Neues Passwort",
+      confirm: "Neues Passwort bestätigen",
+      submit: "Passwort aktualisieren",
+      success: "Passwort erfolgreich aktualisiert.",
+      errors: {
+        mismatch: "Die neuen Passwörter stimmen nicht überein.",
+        minLength: "Das neue Passwort muss mindestens 8 Zeichen lang sein.",
+        failed: "Passwort konnte nicht aktualisiert werden.",
+      },
+    },
+    delete: {
+      title: "Konto löschen",
+      warning:
+        "Achtung: Diese Aktion entfernt dein Konto und deine zugehörigen Daten dauerhaft.",
+      instructions:
+        "Gib zur Bestätigung DELETE in das Feld ein. Danach wird dein Konto endgültig gelöscht.",
+      confirmLabel: "Bestätigung",
+      submit: "Konto endgültig löschen",
+      failed: "Konto konnte nicht gelöscht werden.",
     },
   },
   donation: {
@@ -53,8 +85,11 @@ const de = {
       backToLogin: "Zurück zum Login",
       passwordsMismatch: "Passwörter stimmen nicht überein.",
       createdCheckInbox:
-        "Konto erstellt. Bitte E-Mails prüfen, Adresse bestätigen und dann anmelden.",
-      failedFallback: "Registrierung fehlgeschlagen. Bitte erneut versuchen.",
+        "Wenn die Adresse verwendet werden kann, senden wir dir eine E-Mail mit den nächsten Schritten.",
+      failedFallback:
+        "Registrierung entgegengenommen. Wenn die Adresse verwendet werden kann, senden wir dir eine E-Mail mit den nächsten Schritten.",
+      rateLimited:
+        "Zu viele Registrierungsversuche. Bitte warte {minutes} Minuten und versuche es erneut.",
     },
   },
   landing: {
@@ -419,7 +454,7 @@ const de = {
     alertRecipientInvalid:
       "Service-Alarm-Empfänger muss eine gültige E-Mail-Adresse sein.",
     recipientsRequired: "Mindestens ein Empfänger ist erforderlich.",
-    recipientsTooMany: "Es sind maximal 25 Empfänger erlaubt.",
+    recipientsTooMany: "Es sind maximal 5 Empfänger erlaubt.",
     recipientsInvalidAddress: "Ungültige Empfänger-Adresse: {email}",
     localeUnsupported: "Sprache muss Deutsch oder Englisch sein.",
     scheduleRequired: "Zeitplan ist erforderlich.",
