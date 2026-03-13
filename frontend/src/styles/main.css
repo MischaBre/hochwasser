@@ -4,26 +4,28 @@
 
 @layer base {
   :root {
-    --background: 204 36% 97%;
-    --foreground: 204 29% 13%;
-    --card: 0 0% 100%;
-    --card-foreground: 204 29% 13%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 204 29% 13%;
-    --primary: 195 90% 38%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 44 94% 92%;
-    --secondary-foreground: 34 67% 24%;
-    --muted: 203 31% 92%;
-    --muted-foreground: 205 17% 38%;
-    --accent: 48 96% 88%;
-    --accent-foreground: 34 67% 24%;
+    --background: 193 44% 96%;
+    --foreground: 198 38% 14%;
+    --card: 195 35% 99%;
+    --card-foreground: 198 38% 14%;
+    --popover: 195 35% 99%;
+    --popover-foreground: 198 38% 14%;
+    --primary: 191 78% 34%;
+    --primary-foreground: 190 40% 98%;
+    --secondary: 36 75% 89%;
+    --secondary-foreground: 26 50% 24%;
+    --muted: 193 28% 89%;
+    --muted-foreground: 195 20% 34%;
+    --accent: 27 84% 73%;
+    --accent-foreground: 24 55% 22%;
     --destructive: 0 82% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 205 31% 84%;
-    --input: 205 31% 84%;
-    --ring: 195 90% 38%;
-    --radius: 0.75rem;
+    --destructive-foreground: 10 20% 98%;
+    --border: 194 30% 79%;
+    --input: 194 30% 79%;
+    --ring: 191 78% 34%;
+    --radius: 0.8rem;
+    --font-body: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+    --font-display: "Fraunces", "Iowan Old Style", serif;
   }
 
   * {
@@ -36,12 +38,40 @@
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
-    font-family: "Sora", "Avenir Next", "Segoe UI", sans-serif;
+    font-family: var(--font-body);
+    font-weight: 500;
     font-feature-settings: "rlig" 1, "calt" 1;
     background:
-      radial-gradient(circle at 12% 2%, hsl(var(--accent) / 0.45), transparent 30%),
-      radial-gradient(circle at 90% 0%, hsl(var(--primary) / 0.2), transparent 33%),
+      radial-gradient(circle at 8% 3%, hsl(var(--accent) / 0.34), transparent 34%),
+      radial-gradient(circle at 94% 0%, hsl(var(--primary) / 0.22), transparent 36%),
+      linear-gradient(
+        135deg,
+        hsl(var(--background)) 0%,
+        hsl(190 40% 95%) 52%,
+        hsl(36 55% 94%) 100%
+      ),
+      repeating-linear-gradient(
+        -18deg,
+        hsl(var(--foreground) / 0.012) 0,
+        hsl(var(--foreground) / 0.012) 2px,
+        transparent 2px,
+        transparent 13px
+      ),
       hsl(var(--background));
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+    color: hsl(var(--foreground));
   }
 }
 

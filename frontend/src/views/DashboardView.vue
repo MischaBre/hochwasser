@@ -156,20 +156,20 @@ const getLatestMeasurement = (stationUuid: string): number | null => {
 </script>
 
 <template>
-  <section class="space-y-4">
-    <Card>
+  <section class="dashboard-view space-y-4">
+    <Card class="dashboard-hero">
       <CardContent class="py-5">
         <div
-          class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+          class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"
         >
           <div>
             <p
-              class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              class="text-xs font-extrabold uppercase tracking-[0.13em] text-primary"
             >
               {{ t("dashboard.kicker") }}
             </p>
-            <h2 class="text-xl font-semibold">{{ t("dashboard.title") }}</h2>
-            <p class="text-sm text-muted-foreground">
+            <h2 class="text-2xl font-semibold md:text-3xl">{{ t("dashboard.title") }}</h2>
+            <p class="text-sm font-medium text-muted-foreground">
               {{
                 t("dashboard.subtitle", {
                   total: formatNumber(jobs.length),
@@ -178,7 +178,7 @@ const getLatestMeasurement = (stationUuid: string): number | null => {
               }}
             </p>
           </div>
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap gap-2 md:justify-end">
             <Button
               size="sm"
               variant="outline"
@@ -212,7 +212,11 @@ const getLatestMeasurement = (stationUuid: string): number | null => {
     </div>
 
     <div v-else class="grid gap-4 lg:grid-cols-2">
-      <Card v-for="job in jobs" :key="job.job_uuid" class="min-w-0 border-border/80">
+      <Card
+        v-for="job in jobs"
+        :key="job.job_uuid"
+        class="dashboard-job-card min-w-0 border-border/80"
+      >
         <CardHeader>
           <div class="flex items-start justify-between gap-3">
             <div>
@@ -231,7 +235,7 @@ const getLatestMeasurement = (stationUuid: string): number | null => {
         </CardHeader>
         <CardContent class="space-y-3">
           <div
-            class="grid grid-cols-1 gap-2 rounded-md border bg-muted/25 p-3 text-xs text-muted-foreground sm:grid-cols-2"
+            class="dashboard-meta-grid grid grid-cols-1 gap-2 rounded-md border p-3 text-xs text-muted-foreground sm:grid-cols-2"
           >
             <p>
               <span class="block text-[10px] uppercase tracking-wide">{{
@@ -267,7 +271,7 @@ const getLatestMeasurement = (stationUuid: string): number | null => {
             </p>
           </div>
 
-          <div class="space-y-2 rounded-md border bg-card p-2">
+          <div class="dashboard-trend space-y-2 rounded-md border p-2">
             <p
               class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
             >
@@ -318,7 +322,7 @@ const getLatestMeasurement = (stationUuid: string): number | null => {
       </Card>
     </div>
 
-    <p class="text-xs text-muted-foreground">
+    <p class="source-copy text-xs text-muted-foreground">
       {{ t("dashboard.dataSource") }}
       <a
         class="font-semibold text-foreground hover:underline"
@@ -330,3 +334,55 @@ const getLatestMeasurement = (stationUuid: string): number | null => {
     </p>
   </section>
 </template>
+
+<style scoped>
+.dashboard-view {
+  animation: rise-in 420ms ease-out both;
+}
+
+.dashboard-hero {
+  border-color: hsl(var(--primary) / 0.24);
+  background:
+    radial-gradient(circle at 105% -20%, hsl(var(--accent) / 0.28), transparent 45%),
+    linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.25) 100%);
+  box-shadow:
+    0 12px 30px hsl(var(--primary) / 0.12),
+    inset 0 1px 0 hsl(var(--primary) / 0.1);
+}
+
+.dashboard-job-card {
+  background: linear-gradient(165deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
+  box-shadow: 0 10px 24px hsl(var(--primary) / 0.08);
+}
+
+.dashboard-meta-grid {
+  border-color: hsl(var(--border));
+  background: hsl(var(--muted) / 0.28);
+}
+
+.dashboard-trend {
+  border-color: hsl(var(--border));
+  background: hsl(var(--card) / 0.84);
+}
+
+.source-copy a:hover {
+  text-decoration-color: hsl(var(--primary));
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-view {
+    animation: none;
+  }
+}
+</style>

@@ -111,13 +111,13 @@ const handleDelete = async (jobUuid: string) => {
 </script>
 
 <template>
-  <section class="space-y-4">
-    <Card>
+  <section class="jobs-list-view space-y-4">
+    <Card class="jobs-list-card">
       <CardHeader>
         <div
           class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
         >
-          <CardTitle>{{ t("jobsList.title") }}</CardTitle>
+          <CardTitle class="text-2xl md:text-3xl">{{ t("jobsList.title") }}</CardTitle>
           <Button @click="goToCreate">{{ t("jobsList.createJob") }}</Button>
         </div>
       </CardHeader>
@@ -239,7 +239,7 @@ const handleDelete = async (jobUuid: string) => {
           <table class="w-full min-w-[680px] border-collapse text-left text-sm">
             <thead>
               <tr
-                class="border-b text-xs uppercase tracking-wide text-muted-foreground"
+                class="border-b text-xs uppercase tracking-[0.12em] text-muted-foreground"
               >
                 <th class="py-3 pr-4">{{ t("jobsList.table.name") }}</th>
                 <th class="py-3 pr-4">{{ t("jobsList.table.station") }}</th>
@@ -329,3 +329,34 @@ const handleDelete = async (jobUuid: string) => {
     </Card>
   </section>
 </template>
+
+<style scoped>
+.jobs-list-view {
+  animation: rise-in 420ms ease-out both;
+}
+
+.jobs-list-card {
+  border-color: hsl(var(--primary) / 0.2);
+  background:
+    radial-gradient(circle at 100% 0%, hsl(var(--accent) / 0.22), transparent 45%),
+    linear-gradient(155deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
+  box-shadow: 0 12px 28px hsl(var(--primary) / 0.1);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jobs-list-view {
+    animation: none;
+  }
+}
+</style>

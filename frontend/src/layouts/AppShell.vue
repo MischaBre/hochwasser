@@ -31,8 +31,8 @@ const localeModel = computed({
 
 const navClass = (active: boolean): string => {
   return active
-    ? "rounded-md bg-primary/15 px-3 py-2 text-sm font-semibold text-foreground"
-    : "rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground hover:bg-accent hover:text-accent-foreground";
+    ? "rounded-md border border-primary/30 bg-primary/15 px-3 py-2 text-sm font-semibold text-foreground shadow-[0_6px_16px_hsl(var(--primary)/0.18)]"
+    : "rounded-md border border-transparent px-3 py-2 text-sm font-semibold text-muted-foreground hover:border-primary/20 hover:bg-primary/10 hover:text-foreground";
 };
 </script>
 
@@ -42,18 +42,18 @@ const navClass = (active: boolean): string => {
       class="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 md:px-8"
     >
       <header
-        class="mb-6 flex flex-col gap-3 rounded-xl border bg-card/90 px-4 py-4 shadow-sm backdrop-blur sm:px-5 md:flex-row md:items-center md:justify-between"
+        class="mb-6 flex flex-col gap-3 rounded-xl border border-primary/20 bg-card/90 px-4 py-4 shadow-[0_14px_32px_hsl(var(--primary)/0.12)] backdrop-blur sm:px-5 md:flex-row md:items-center md:justify-between"
       >
         <div
           class="flex w-full items-start justify-between gap-3 md:w-auto md:items-center md:justify-start md:gap-5"
         >
           <div>
             <p
-              class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              class="text-xs font-extrabold uppercase tracking-[0.13em] text-primary"
             >
               {{ t("shell.appName") }}
             </p>
-            <h1 class="text-xl font-semibold md:text-2xl">
+            <h1 class="text-2xl font-semibold md:text-3xl">
               {{ t("shell.appSection") }}
             </h1>
           </div>
@@ -78,7 +78,7 @@ const navClass = (active: boolean): string => {
           <select
             id="app-locale"
             v-model="localeModel"
-            class="h-8 rounded-md border border-input bg-background px-2 text-xs font-semibold uppercase tracking-wide"
+            class="h-8 rounded-md border border-input bg-background px-2 text-xs font-semibold uppercase tracking-wide shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)]"
           >
             <option
               v-for="nextLocale in supportedLocales"
@@ -141,14 +141,15 @@ const navClass = (active: boolean): string => {
 .app-shell-wrap {
   min-height: 100vh;
   background: radial-gradient(
-      circle at 85% 0%,
-      hsl(var(--accent) / 0.28),
+      circle at 92% 0%,
+      hsl(var(--accent) / 0.3),
       transparent 40%
     ),
+    radial-gradient(circle at 8% 95%, hsl(var(--primary) / 0.16), transparent 38%),
     linear-gradient(
       180deg,
       hsl(var(--background)) 0%,
-      hsl(var(--muted) / 0.25) 100%
+      hsl(var(--muted) / 0.18) 100%
     );
 }
 

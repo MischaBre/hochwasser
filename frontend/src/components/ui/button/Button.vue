@@ -16,15 +16,15 @@ const props = withDefaults(defineProps<{
 const variantClass = computed(() => {
   switch (props.variant) {
     case 'secondary':
-      return 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+      return 'bg-secondary text-secondary-foreground shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)] hover:bg-secondary/85'
     case 'outline':
-      return 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
+      return 'border border-input bg-card/80 text-foreground hover:border-primary/35 hover:bg-primary/10'
     case 'ghost':
-      return 'hover:bg-accent hover:text-accent-foreground'
+      return 'hover:bg-primary/10 hover:text-foreground'
     case 'destructive':
       return 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
     default:
-      return 'bg-primary text-primary-foreground hover:bg-primary/90'
+      return 'bg-primary text-primary-foreground shadow-[0_10px_24px_hsl(var(--primary)/0.28)] hover:bg-primary/92'
   }
 })
 
@@ -47,7 +47,7 @@ const sizeClass = computed(() => {
     :type="type"
     :disabled="disabled"
     :class="[
-      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50',
+      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-[color,background-color,border-color,transform,box-shadow] duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background disabled:pointer-events-none disabled:opacity-50 hover:-translate-y-0.5',
       variantClass,
       sizeClass,
     ]"

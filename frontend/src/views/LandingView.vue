@@ -281,40 +281,45 @@ const openPrimaryCta = () => {
 <style scoped>
 .landing-page {
   min-height: 100vh;
-  padding: 1.25rem;
+  padding: 1rem;
 }
 
 .landing-shell {
   margin: 0 auto;
   display: flex;
-  min-height: calc(100vh - 2.5rem);
+  min-height: calc(100vh - 2rem);
   max-width: 72rem;
   flex-direction: column;
-  gap: 2rem;
-  border: 1px solid hsl(var(--border));
-  border-radius: 1.25rem;
-  background: linear-gradient(
-    160deg,
-    hsl(var(--card)) 0%,
-    hsl(var(--muted) / 0.45) 100%
-  );
+  gap: clamp(1.4rem, 2vw, 2.2rem);
+  border: 1px solid hsl(var(--primary) / 0.22);
+  border-radius: 1.35rem;
+  background:
+    radial-gradient(circle at 0% 100%, hsl(var(--accent) / 0.22), transparent 40%),
+    linear-gradient(160deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.35) 100%);
+  box-shadow:
+    0 18px 54px hsl(var(--primary) / 0.16),
+    inset 0 1px 0 hsl(var(--primary) / 0.1);
   padding: 1.25rem;
+  animation: slide-fade 460ms ease-out both;
 }
 
 .landing-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.8rem;
   flex-wrap: wrap;
+  border-bottom: 1px dashed hsl(var(--border));
+  padding-bottom: 0.8rem;
 }
 
 .landing-logo {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.95rem;
-  font-weight: 700;
+  gap: 0.55rem;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
   color: hsl(var(--foreground));
   text-decoration: none;
 }
@@ -329,6 +334,7 @@ const openPrimaryCta = () => {
 
 .landing-actions select {
   min-width: 4.2rem;
+  border-color: hsl(var(--border));
 }
 
 .landing-primary-btn {
@@ -343,117 +349,140 @@ const openPrimaryCta = () => {
 }
 
 .landing-link:hover {
-  color: hsl(var(--foreground));
+  color: hsl(var(--primary));
 }
 
 .landing-main {
   display: grid;
-  gap: 1.75rem;
+  gap: clamp(1.2rem, 3vw, 2rem);
 }
 
 .hero {
-  border-radius: 1rem;
-  border: 1px solid hsl(var(--border));
+  position: relative;
+  overflow: clip;
+  border-radius: 1.2rem;
+  border: 1px solid hsl(var(--primary) / 0.24);
   background: radial-gradient(
-      circle at 80% 0%,
-      hsl(var(--accent) / 0.5),
-      transparent 45%
+      circle at 95% 0%,
+      hsl(var(--accent) / 0.45),
+      transparent 43%
     ),
-    linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.2) 100%);
-  padding: 2rem 1.5rem;
+    linear-gradient(122deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.36) 100%);
+  padding: clamp(1.8rem, 4vw, 2.9rem) clamp(1.25rem, 4vw, 2.6rem);
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  width: min(62vw, 28rem);
+  height: min(62vw, 28rem);
+  right: -11rem;
+  top: -13rem;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.36), transparent 62%);
+  pointer-events: none;
 }
 
 .hero-kicker {
   margin: 0;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--primary));
 }
 
 .hero-title {
-  margin: 0.75rem 0 0;
-  max-width: 28.8ch;
-  font-size: clamp(1.9rem, 5vw, 3rem);
-  line-height: 1.1;
+  margin: 0.55rem 0 0;
+  max-width: 17ch;
+  font-size: clamp(2.2rem, 6.4vw, 4.6rem);
+  font-weight: 700;
+  line-height: 0.98;
+  text-wrap: pretty;
 }
 
 .hero-copy {
   margin: 1rem 0 0;
-  max-width: 64.8ch;
-  font-size: 1rem;
+  max-width: 54ch;
+  font-size: clamp(1rem, 1.1vw, 1.12rem);
+  font-weight: 600;
   color: hsl(var(--muted-foreground));
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .hero-ctas {
-  margin-top: 1.5rem;
+  margin-top: 1.8rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.8rem;
 }
 
 .feature-grid {
   display: grid;
-  gap: 0.85rem;
+  gap: 0.9rem;
 }
 
 .steps-grid {
   display: grid;
-  gap: 0.85rem;
+  gap: 0.9rem;
 }
 
 .feature-card {
   border: 1px solid hsl(var(--border));
-  border-radius: 0.9rem;
-  padding: 1rem;
-  background: hsl(var(--card));
+  border-radius: 1rem;
+  padding: 1.1rem;
+  background: hsl(var(--card) / 0.9);
+  box-shadow: 0 8px 24px hsl(var(--primary) / 0.07);
 }
 
 .feature-card h2 {
-  margin: 0.65rem 0 0;
-  font-size: 1rem;
+  margin: 0.55rem 0 0;
+  font-size: clamp(1.06rem, 1.2vw, 1.3rem);
 }
 
 .feature-card p {
   margin: 0.5rem 0 0;
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   color: hsl(var(--muted-foreground));
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .step-card {
-  border: 1px solid hsl(var(--border));
-  border-radius: 0.9rem;
-  padding: 1rem;
-  background: hsl(var(--card));
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(var(--primary) / 0.2);
+  border-radius: 1rem;
+  padding: 1.1rem;
+  background: linear-gradient(
+    155deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--background) / 0.8) 100%
+  );
 }
 
 .step-number {
   margin: 0;
   font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--primary));
 }
 
 .step-card h2 {
-  margin: 0.55rem 0 0;
-  font-size: 1rem;
+  margin: 0.4rem 0 0;
+  font-size: clamp(1.06rem, 1.2vw, 1.2rem);
 }
 
 .step-card p {
   margin: 0.5rem 0 0;
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   color: hsl(var(--muted-foreground));
   line-height: 1.5;
 }
 
 .feature-icon {
-  height: 1.1rem;
-  width: 1.1rem;
+  height: 1.2rem;
+  width: 1.2rem;
   color: hsl(var(--primary));
 }
 
@@ -500,6 +529,7 @@ const openPrimaryCta = () => {
 
 .landing-footer-links a:hover {
   text-decoration: underline;
+  text-decoration-color: hsl(var(--primary));
 }
 
 .login-modal-backdrop {
@@ -544,22 +574,55 @@ const openPrimaryCta = () => {
   color: hsl(var(--foreground));
 }
 
+@keyframes slide-fade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (min-width: 768px) {
   .landing-page {
-    padding: 1.75rem;
+    padding: 1.45rem;
   }
 
   .landing-shell {
-    min-height: calc(100vh - 3.5rem);
-    padding: 1.5rem;
+    min-height: calc(100vh - 2.9rem);
+    padding: 1.6rem;
+  }
+
+  .landing-main {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .hero {
+    grid-column: 1 / span 2;
   }
 
   .feature-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+  }
+
+  .feature-card:first-child {
+    grid-column: 1 / span 2;
   }
 
   .steps-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: start;
+  }
+
+  .step-card:nth-child(2) {
+    margin-left: 1.2rem;
+  }
+
+  .step-card:nth-child(3) {
+    margin-left: 2.4rem;
   }
 
   .landing-header {
@@ -573,6 +636,22 @@ const openPrimaryCta = () => {
 
   .landing-primary-btn {
     margin-left: 0;
+  }
+}
+
+@media (min-width: 1100px) {
+  .hero {
+    min-height: 23rem;
+  }
+
+  .hero-copy:last-of-type {
+    max-width: 40ch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-shell {
+    animation: none;
   }
 }
 </style>
