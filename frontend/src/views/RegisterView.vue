@@ -12,6 +12,7 @@ import Label from '@/components/ui/label/Label.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { toAuthErrorMessage } from '@/features/auth/errorMessages'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -79,10 +80,10 @@ const submit = async () => {
     await authStore.signUp(email.value.trim(), password.value)
     successMessage.value = t('auth.register.createdCheckInbox')
   } catch (error) {
-    if (error instanceof Error) {
-      console.error('Registration attempt failed', error)
-    }
-    errorMessage.value = t('auth.register.failedFallback')
+    errorMessage.value = toAuthErrorMessage(error, t, {
+      fallbackKey: 'auth.register.failedFallback',
+      passwordPolicyKey: 'auth.register.passwordPolicy',
+    })
   }
 }
 </script>

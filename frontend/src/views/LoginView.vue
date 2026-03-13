@@ -12,6 +12,7 @@ import Label from '@/components/ui/label/Label.vue'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { toAuthErrorMessage } from '@/features/auth/errorMessages'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -33,8 +34,10 @@ const submit = async () => {
     await authStore.signIn(email.value.trim(), password.value)
     await router.push(redirectPath.value)
   } catch (error) {
-    const message = error instanceof Error ? error.message : t('auth.login.failedFallback')
-    errorMessage.value = message
+    errorMessage.value = toAuthErrorMessage(error, t, {
+      fallbackKey: 'auth.login.failedFallback',
+      invalidCredentialsKey: 'auth.login.invalidCredentials',
+    })
   }
 }
 </script>

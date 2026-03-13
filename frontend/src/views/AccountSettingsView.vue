@@ -12,6 +12,7 @@ import CardTitle from '@/components/ui/card/CardTitle.vue'
 import Input from '@/components/ui/input/Input.vue'
 import Label from '@/components/ui/label/Label.vue'
 import { deleteMe } from '@/features/account/api'
+import { toAuthErrorMessage } from '@/features/auth/errorMessages'
 import { useCurrentUserQuery } from '@/features/account/useCurrentUser'
 import { useAuthStore } from '@/stores/auth'
 
@@ -57,7 +58,11 @@ const submitPasswordChange = async () => {
     confirmNewPassword.value = ''
     changePasswordSuccess.value = t('account.password.success')
   } catch (error) {
-    changePasswordError.value = error instanceof Error ? error.message : t('account.password.errors.failed')
+    changePasswordError.value = toAuthErrorMessage(error, t, {
+      fallbackKey: 'account.password.errors.failed',
+      invalidCredentialsKey: 'account.password.errors.invalidCurrent',
+      passwordPolicyKey: 'account.password.errors.policy',
+    })
   }
 }
 

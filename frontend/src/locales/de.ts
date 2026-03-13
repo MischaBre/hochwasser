@@ -39,6 +39,8 @@ const de = {
       errors: {
         mismatch: "Die neuen Passwörter stimmen nicht überein.",
         minLength: "Das neue Passwort muss mindestens 8 Zeichen lang sein.",
+        invalidCurrent: "Das aktuelle Passwort ist nicht korrekt.",
+        policy: "Das neue Passwort erfüllt die Passwortregeln nicht.",
         failed: "Passwort konnte nicht aktualisiert werden.",
       },
     },
@@ -69,6 +71,7 @@ const de = {
       createAccount: "Konto erstellen",
       cancel: "Abbrechen",
       close: "Login-Dialog schließen",
+      invalidCredentials: "E-Mail oder Passwort ist nicht korrekt.",
       failedFallback: "Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
     },
     register: {
@@ -84,12 +87,20 @@ const de = {
       submitting: "Erstelle Konto...",
       backToLogin: "Zurück zum Login",
       passwordsMismatch: "Passwörter stimmen nicht überein.",
+      passwordPolicy: "Das Passwort erfüllt die Passwortregeln nicht.",
       createdCheckInbox:
         "Wenn die Adresse verwendet werden kann, senden wir dir eine E-Mail mit den nächsten Schritten.",
       failedFallback:
         "Registrierung entgegengenommen. Wenn die Adresse verwendet werden kann, senden wir dir eine E-Mail mit den nächsten Schritten.",
       rateLimited:
         "Zu viele Registrierungsversuche. Bitte warte {minutes} Minuten und versuche es erneut.",
+    },
+    errors: {
+      invalidCredentials: "E-Mail oder Passwort ist nicht korrekt.",
+      passwordPolicy: "Das Passwort erfüllt die Passwortregeln nicht.",
+      emailNotConfirmed: "Bitte bestätige zuerst deine E-Mail-Adresse.",
+      rateLimited: "Zu viele Versuche. Bitte warte kurz und versuche es erneut.",
+      network: "Netzwerkfehler. Bitte prüfe deine Verbindung und versuche es erneut.",
     },
   },
   charts: {

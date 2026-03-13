@@ -39,6 +39,8 @@ const en = {
       errors: {
         mismatch: "The new passwords do not match.",
         minLength: "The new password must be at least 8 characters long.",
+        invalidCurrent: "The current password is incorrect.",
+        policy: "The new password does not meet the password policy.",
         failed: "Password could not be updated.",
       },
     },
@@ -69,6 +71,7 @@ const en = {
       createAccount: "Create account",
       cancel: "Cancel",
       close: "Close login dialog",
+      invalidCredentials: "Email or password is incorrect.",
       failedFallback: "Login failed. Please try again.",
     },
     register: {
@@ -84,12 +87,20 @@ const en = {
       submitting: "Creating account...",
       backToLogin: "Back to login",
       passwordsMismatch: "Passwords do not match.",
+      passwordPolicy: "The password does not meet the password policy.",
       createdCheckInbox:
         "If the address can be used, we will send an email with next steps.",
       failedFallback:
         "Registration received. If the address can be used, we will send an email with next steps.",
       rateLimited:
         "Too many registration attempts. Please wait {minutes} minutes and try again.",
+    },
+    errors: {
+      invalidCredentials: "Email or password is incorrect.",
+      passwordPolicy: "The password does not meet the password policy.",
+      emailNotConfirmed: "Please confirm your email address first.",
+      rateLimited: "Too many attempts. Please wait a moment and try again.",
+      network: "Network error. Please check your connection and try again.",
     },
   },
   charts: {

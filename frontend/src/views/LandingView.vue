@@ -18,6 +18,7 @@ import { useI18n } from "vue-i18n";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { ApiError } from "@/api/client";
 import { useAuth } from "@/composables/useAuth";
+import { toAuthErrorMessage } from "@/features/auth/errorMessages";
 import {
   listPublicStationForecast,
   listPublicStationMeasurements,
@@ -75,9 +76,10 @@ const submitLogin = async () => {
     await authStore.signIn(email.value.trim(), password.value);
     await router.push(redirectPath.value);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : t("auth.login.failedFallback");
-    errorMessage.value = message;
+    errorMessage.value = toAuthErrorMessage(error, t, {
+      fallbackKey: "auth.login.failedFallback",
+      invalidCredentialsKey: "auth.login.invalidCredentials",
+    });
   }
 };
 
