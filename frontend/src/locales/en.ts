@@ -133,6 +133,51 @@ const en = {
         copy: "You get notified automatically when the level crosses your limit or the outlook gets worse.",
       },
     },
+    example: {
+      kicker: "Preview",
+      title: "See the live graph and map interaction",
+      copy: "The Cologne station is preselected. Pick any marker in the map and the example graph updates instantly.",
+      loading: "Loading station...",
+      limitLabel: "Limit:",
+      state: "State: {value}",
+      stationCount: "Stations on map: {value}",
+      mapHint: "Click a station point to update the example hydrograph.",
+      stateValues: {
+        no_crossing: "No crossing",
+        crossing_incoming: "Crossing incoming",
+        crossing_active: "Crossing active",
+        crossing_soon_over: "Crossing ending soon",
+      },
+      email: {
+        previewTitle: "Example email",
+        fromLabel: "From:",
+        toLabel: "To:",
+        subjectLabel: "Subject:",
+        subject: "[Flood Alert] {station}: {limit} {unit} reached",
+        sectionStationInformation: "Station information",
+        sectionAlertContext: "Alert context",
+        stationNumberLine: "Station number: {value}",
+        longNameLine: "Long name: {value}",
+        waterBodyLine: "Water body: {value}",
+        thresholdLine: "Threshold: {value} cm",
+        currentValueLine: "Current value: {value} (at {time})",
+        triggerSourceLine: "Trigger source: {value}",
+        triggerTimeLine: "Trigger time: {value}",
+        maxForecastLine: "Maximum forecast value: {value} (at {time})",
+        triggerSourceCurrent: "current",
+        triggerSourceOfficial: "official",
+        introValues: {
+          no_crossing:
+            "No threshold crossing is expected right now. We will notify you as soon as the outlook worsens.",
+          crossing_incoming:
+            "The forecast indicates an upcoming threshold crossing. Please monitor the situation closely.",
+          crossing_active:
+            "The threshold is already reached or exceeded in this example. This mirrors an active alert email.",
+          crossing_soon_over:
+            "The threshold is still exceeded at the moment, but the forecast suggests the situation will calm soon.",
+        },
+      },
+    },
     footer: {
       source:
         "Informational support only. Always follow official warnings and emergency guidance.",
@@ -433,6 +478,10 @@ const en = {
         dead: "Dead",
         cancelled: "Cancelled",
       },
+    },
+    hydrograph: {
+      title: "Hydrograph with prediction",
+      copy: "Measured values (solid), forecast values (dashed), and your threshold are shown together.",
     },
   },
   notFound: {

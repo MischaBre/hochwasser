@@ -22,6 +22,7 @@ def build_email(
     limit_cm: float,
     locale: str,
     zone: ZoneInfo,
+    state: str | None = None,
 ) -> tuple[str, str, str]:
     max_forecast = _get_max_forecast_point(forecast_points)
 
@@ -36,6 +37,7 @@ def build_email(
         locale=locale,
         zone=zone,
         max_forecast=max_forecast,
+        state=state,
     )
     subject = render_email_template(locale, "email/alert_subject.txt.j2", **context)
     body = render_email_template(locale, "email/alert_body.txt.j2", **context)
@@ -54,6 +56,7 @@ def _build_alert_email_context(
     locale: str,
     zone: ZoneInfo,
     max_forecast: Measurement | None,
+    state: str | None,
 ) -> dict[str, object]:
     station_timeseries = (
         ", ".join(
@@ -134,6 +137,9 @@ def _build_alert_email_context(
         "chart_alt": chart_payload["alt"],
         "chart_legend": chart_payload["legend"],
         "chart_message": chart_payload["message"],
+        "state_intro_message": (
+            translate(locale, f"state_intro_{state}") if state else None
+        ),
     }
 
 
@@ -246,6 +252,7 @@ def build_notification_payload(
             job.limit_cm,
             job.locale,
             zone,
+            state,
         )
         state_prefix = render_email_template(
             job.locale,

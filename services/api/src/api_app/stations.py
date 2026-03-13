@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import threading
 from dataclasses import dataclass
+from datetime import datetime
 from time import monotonic
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
@@ -14,6 +15,7 @@ PEGELONLINE_BASE_URL = "https://pegelonline.wsv.de/webservices/rest-api/v2"
 STATION_CACHE_TTL_SECONDS = 900
 STATION_FETCH_TIMEOUT_SECONDS = 20
 MEASUREMENT_CACHE_TTL_SECONDS = 120
+FORECAST_CACHE_TTL_SECONDS = 120
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,7 @@ class _MeasurementCache:
 _cache_lock = threading.Lock()
 _station_cache: _StationCache | None = None
 _measurement_cache: dict[tuple[str, str], _MeasurementCache] = {}
+_forecast_cache: dict[str, _MeasurementCache] = {}
 
 
 def list_stations(
@@ -114,6 +117,35 @@ def list_station_measurements(
             measurements=measurements,
         )
     return measurements
+
+
+def list_station_forecast(*, station_uuid: str) -> tuple[StationMeasurement, ...]:
+    normalized_station_uuid = station_uuid.strip()
+    if not normalized_station_uuid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="station_uuid must not be empty",
+        )
+
+    now = monotonic()
+    with _cache_lock:
+        cached = _forecast_cache.get(normalized_station_uuid)
+        if (
+            cached is not None
+            and (now - cached.fetched_at_monotonic) < FORECAST_CACHE_TTL_SECONDS
+        ):
+            return cached.measurements
+
+    forecast = _fetch_station_forecast_from_pegelonline(
+        station_uuid=normalized_station_uuid,
+    )
+
+    with _cache_lock:
+        _forecast_cache[normalized_station_uuid] = _MeasurementCache(
+            fetched_at_monotonic=monotonic(),
+            measurements=forecast,
+        )
+    return forecast
 
 
 def _station_matches_search(station: StationSummary, query: str) -> bool:
@@ -275,3 +307,87 @@ def _fetch_station_measurements_from_pegelonline(
 
     rows.sort(key=lambda row: row.timestamp)
     return tuple(rows)
+
+
+def _fetch_station_forecast_from_pegelonline(
+    *,
+    station_uuid: str,
+) -> tuple[StationMeasurement, ...]:
+    encoded_station_uuid = urllib_parse.quote(station_uuid, safe="")
+    endpoints = (
+        f"/stations/{encoded_station_uuid}/WV/measurements.json",
+        f"/stations/{encoded_station_uuid}/W/forecast.json",
+        f"/stations/{encoded_station_uuid}/W/shorttermforecast.json",
+        f"/stations/{encoded_station_uuid}/W/longtermforecast.json",
+        f"/stations/{encoded_station_uuid}/W/predictions.json",
+    )
+
+    for endpoint in endpoints:
+        url = f"{PEGELONLINE_BASE_URL}{endpoint}"
+        try:
+            payload = _fetch_json_payload(url)
+        except HTTPException as exc:
+            if exc.status_code == status.HTTP_404_NOT_FOUND:
+                continue
+            raise
+
+        rows = _extract_measurements(payload)
+        if rows:
+            return tuple(sorted(rows, key=lambda row: row.timestamp))
+
+    return ()
+
+
+def _fetch_json_payload(url: str) -> object:
+    try:
+        with urllib_request.urlopen(
+            url, timeout=STATION_FETCH_TIMEOUT_SECONDS
+        ) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib_error.HTTPError as exc:
+        if exc.code == 404:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Station or forecast not found",
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not load data from Pegelonline",
+        ) from exc
+    except (urllib_error.URLError, TimeoutError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not load data from Pegelonline",
+        ) from exc
+
+
+def _extract_measurements(payload: object) -> list[StationMeasurement]:
+    if isinstance(payload, list):
+        return _to_measurements(payload)
+
+    if isinstance(payload, dict):
+        for key in ("forecast", "predictions", "measurements", "values", "data"):
+            items = payload.get(key)
+            if isinstance(items, list):
+                return _to_measurements(items)
+
+    return []
+
+
+def _to_measurements(entries: list[object]) -> list[StationMeasurement]:
+    rows: list[StationMeasurement] = []
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        timestamp = item.get("timestamp")
+        value = item.get("value")
+        if not isinstance(timestamp, str):
+            continue
+        if not isinstance(value, (int, float)):
+            continue
+        try:
+            datetime.fromisoformat(timestamp)
+        except ValueError:
+            continue
+        rows.append(StationMeasurement(timestamp=timestamp, value=float(value)))
+    return rows

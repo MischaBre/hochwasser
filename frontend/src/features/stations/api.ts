@@ -45,3 +45,28 @@ export const listStationMeasurements = (
   const suffix = queryString ? `?${queryString}` : ''
   return apiRequest<StationMeasurement[]>(`/v1/stations/${encodeURIComponent(stationUuid)}/measurements${suffix}`)
 }
+
+export const listStationForecast = (stationUuid: string): Promise<StationMeasurement[]> => {
+  return apiRequest<StationMeasurement[]>(`/v1/stations/${encodeURIComponent(stationUuid)}/forecast`)
+}
+
+export const listPublicStations = (params: ListStationsParams = {}): Promise<StationListResponse> => {
+  return apiRequest<StationListResponse>(`/v1/public/stations${toQuery(params)}`)
+}
+
+export const listPublicStationMeasurements = (
+  stationUuid: string,
+  start: string = 'P3D',
+): Promise<StationMeasurement[]> => {
+  const query = new URLSearchParams()
+  if (start.trim()) {
+    query.set('start', start.trim())
+  }
+  const queryString = query.toString()
+  const suffix = queryString ? `?${queryString}` : ''
+  return apiRequest<StationMeasurement[]>(`/v1/public/stations/${encodeURIComponent(stationUuid)}/measurements${suffix}`)
+}
+
+export const listPublicStationForecast = (stationUuid: string): Promise<StationMeasurement[]> => {
+  return apiRequest<StationMeasurement[]>(`/v1/public/stations/${encodeURIComponent(stationUuid)}/forecast`)
+}
