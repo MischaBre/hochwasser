@@ -14,6 +14,7 @@ import {
 import { computed } from "vue";
 import { Line } from "vue-chartjs";
 import { DateTime } from "luxon";
+import { useI18n } from "vue-i18n";
 import type { StationMeasurement } from "@/features/stations/types";
 
 ChartJS.register(
@@ -31,12 +32,48 @@ const props = defineProps<{
   limit: number;
 }>();
 
+const { locale, t } = useI18n();
+
+const tokenColor = (token: string, alpha?: number): string => {
+  if (typeof document === "undefined") {
+    return `hsl(0 0% 40%${typeof alpha === "number" ? ` / ${alpha}` : ""})`;
+  }
+  const tokenValue = getComputedStyle(document.documentElement)
+    .getPropertyValue(token)
+    .trim();
+  if (!tokenValue) {
+    return `hsl(0 0% 40%${typeof alpha === "number" ? ` / ${alpha}` : ""})`;
+  }
+  return `hsl(${tokenValue}${typeof alpha === "number" ? ` / ${alpha}` : ""})`;
+};
+
+const sanitizeSeries = (series: StationMeasurement[]): StationMeasurement[] => {
+  const byTimestamp = new Map<string, number>();
+
+  for (const row of series) {
+    const value = Number(row.value);
+    const timestamp = typeof row.timestamp === "string" ? row.timestamp.trim() : "";
+    const ts = Date.parse(timestamp);
+    if (!timestamp || !Number.isFinite(ts) || !Number.isFinite(value)) {
+      continue;
+    }
+    byTimestamp.set(timestamp, value);
+  }
+
+  return Array.from(byTimestamp.entries())
+    .sort((a, b) => Date.parse(a[0]) - Date.parse(b[0]))
+    .map(([timestamp, value]) => ({ timestamp, value }));
+};
+
+const safeMeasurements = computed(() => sanitizeSeries(props.measurements));
+const safeForecast = computed(() => sanitizeSeries(props.forecast));
+
 const labels = computed(() => {
   const merged = new Set<string>();
-  for (const row of props.measurements) {
+  for (const row of safeMeasurements.value) {
     merged.add(row.timestamp);
   }
-  for (const row of props.forecast) {
+  for (const row of safeForecast.value) {
     merged.add(row.timestamp);
   }
   return Array.from(merged).sort((a, b) => a.localeCompare(b));
@@ -44,7 +81,7 @@ const labels = computed(() => {
 
 const measuredLookup = computed(() => {
   const table = new Map<string, number>();
-  for (const row of props.measurements) {
+  for (const row of safeMeasurements.value) {
     table.set(row.timestamp, row.value);
   }
   return table;
@@ -52,7 +89,7 @@ const measuredLookup = computed(() => {
 
 const forecastLookup = computed(() => {
   const table = new Map<string, number>();
-  for (const row of props.forecast) {
+  for (const row of safeForecast.value) {
     table.set(row.timestamp, row.value);
   }
   return table;
@@ -78,7 +115,7 @@ const tooltipTitleForIsoLabel = (isoLabel: string): string => {
   if (!parsed) {
     return isoLabel;
   }
-  return parsed.setLocale("de").toFormat("dd.LL.yyyy HH:mm");
+  return parsed.setLocale(locale.value).toFormat("dd.LL.yyyy HH:mm");
 };
 
 const crossingColor = (
@@ -95,12 +132,18 @@ const crossingColor = (
 };
 
 const chartData = computed<ChartData<"line">>(() => {
+  const measuredBase = tokenColor("--primary");
+  const measuredAlert = tokenColor("--destructive");
+  const forecastBase = tokenColor("--foreground", 0.78);
+  const forecastAlert = tokenColor("--destructive", 0.9);
+  const limitColor = tokenColor("--destructive", 0.85);
+
   const datasets: ChartDataset<"line">[] = [
     {
       label: "Measured",
       data: measuredValues.value,
-      borderColor: "hsl(206 64% 38%)",
-      backgroundColor: "hsla(206, 64%, 38%, 0.1)",
+      borderColor: measuredBase,
+      backgroundColor: tokenColor("--primary", 0.1),
       pointRadius: 0,
       borderWidth: 2,
       tension: 0.3,
@@ -112,15 +155,15 @@ const chartData = computed<ChartData<"line">>(() => {
             ctx.p0.parsed.y,
             ctx.p1.parsed.y,
             props.limit,
-            "hsl(206 64% 38%)",
-            "hsl(0 82% 45%)",
+            measuredBase,
+            measuredAlert,
           ),
       },
     },
     {
       label: "Forecast",
       data: forecastValues.value,
-      borderColor: "hsl(195 90% 38%)",
+      borderColor: forecastBase,
       pointRadius: 0,
       borderWidth: 2,
       tension: 0.3,
@@ -133,15 +176,15 @@ const chartData = computed<ChartData<"line">>(() => {
             ctx.p0.parsed.y,
             ctx.p1.parsed.y,
             props.limit,
-            "hsl(195 90% 38%)",
-            "hsl(0 82% 45%)",
+            forecastBase,
+            forecastAlert,
           ),
       },
     },
     {
       label: "Limit",
       data: labels.value.map(() => props.limit),
-      borderColor: "hsla(0, 82%, 45%, 0.85)",
+      borderColor: limitColor,
       pointRadius: 0,
       borderWidth: 1.5,
       tension: 0,
@@ -153,7 +196,15 @@ const chartData = computed<ChartData<"line">>(() => {
 
   return {
     labels: labels.value,
-    datasets,
+    datasets: datasets.map((dataset) => ({
+      ...dataset,
+      label:
+        dataset.label === "Measured"
+          ? t("charts.hydrograph.measured")
+          : dataset.label === "Forecast"
+            ? t("charts.hydrograph.forecast")
+            : t("charts.hydrograph.limit"),
+    })),
   };
 });
 
@@ -166,6 +217,7 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
       mode: "index",
       intersect: false,
     },
+    locale: locale.value,
     plugins: {
       legend: {
         display: true,
@@ -190,7 +242,7 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
             if (typeof y !== "number") {
               return "";
             }
-            return `${item.dataset.label}: ${Math.round(y)} cm`;
+            return `${item.dataset.label}: ${Math.round(y)} ${t("charts.hydrograph.unitCm")}`;
           },
         },
       },
@@ -210,17 +262,17 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
           maxTicksLimit: 6,
         },
         grid: {
-          color: "hsla(205, 17%, 38%, 0.15)",
+          color: tokenColor("--muted-foreground", 0.16),
         },
       },
       y: {
         display: true,
         title: {
           display: true,
-          text: "cm",
+          text: t("charts.hydrograph.unitCm"),
         },
         grid: {
-          color: "hsla(205, 17%, 38%, 0.12)",
+          color: tokenColor("--muted-foreground", 0.13),
         },
       },
     },
@@ -229,9 +281,15 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
 </script>
 
 <template>
-  <div class="hydrograph-chart" role="img" aria-label="Hydrograph with forecast">
+  <div
+    class="hydrograph-chart"
+    role="img"
+    :aria-label="t('charts.hydrograph.ariaLabel')"
+  >
     <Line v-if="hasSeries" :data="chartData" :options="chartOptions" />
-    <div v-else class="hydrograph-empty" />
+    <div v-else class="hydrograph-empty" aria-live="polite">
+      {{ t("charts.hydrograph.empty") }}
+    </div>
   </div>
 </template>
 
@@ -245,6 +303,13 @@ const chartOptions = computed<ChartOptions<"line">>(() => {
   height: 100%;
   border-radius: 0.75rem;
   background: hsl(var(--muted) / 0.4);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: hsl(var(--muted-foreground));
+  overflow-wrap: anywhere;
 }
 
 .hydrograph-chart :deep(canvas) {

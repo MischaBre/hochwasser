@@ -12,6 +12,7 @@ type StationPoint = StationSummary & {
 const props = defineProps<{
   stations: StationPoint[];
   selectedUuid: string;
+  ariaLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -25,20 +26,35 @@ const markerByUuid = new Map<string, L.CircleMarker>();
 let didFitBounds = false;
 let destroyed = false;
 
+const tokenColor = (token: string, alpha?: number): string => {
+  if (typeof document === "undefined") {
+    return `hsl(0 0% 45%${typeof alpha === "number" ? ` / ${alpha}` : ""})`;
+  }
+
+  const tokenValue = getComputedStyle(document.documentElement)
+    .getPropertyValue(token)
+    .trim();
+  if (!tokenValue) {
+    return `hsl(0 0% 45%${typeof alpha === "number" ? ` / ${alpha}` : ""})`;
+  }
+
+  return `hsl(${tokenValue}${typeof alpha === "number" ? ` / ${alpha}` : ""})`;
+};
+
 const defaultMarkerStyle: L.CircleMarkerOptions = {
   radius: 5,
-  color: "#0f766e",
+  color: tokenColor("--primary", 0.9),
   weight: 1.5,
-  fillColor: "#14b8a6",
-  fillOpacity: 0.55,
+  fillColor: tokenColor("--primary", 0.75),
+  fillOpacity: 0.64,
 };
 
 const selectedMarkerStyle: L.CircleMarkerOptions = {
   radius: 7,
-  color: "#991b1b",
+  color: tokenColor("--destructive", 0.94),
   weight: 2,
-  fillColor: "#ef4444",
-  fillOpacity: 0.88,
+  fillColor: tokenColor("--destructive", 0.88),
+  fillOpacity: 0.9,
 };
 
 const ensureMap = () => {
@@ -169,7 +185,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="stations-map-shell">
-    <div ref="mapContainer" class="stations-map" role="img" aria-label="Interaktive Karte der Pegelstationen" />
+    <div
+      ref="mapContainer"
+      class="stations-map"
+      role="img"
+      :aria-label="props.ariaLabel || 'Interactive gauge station map'"
+    />
   </div>
 </template>
 
@@ -207,6 +228,14 @@ onBeforeUnmount(() => {
 
 .stations-map-shell :deep(.leaflet-popup-content-wrapper) {
   border-radius: 0.7rem;
+}
+
+.stations-map-shell :deep(.leaflet-popup-content) {
+  margin: 0.65rem 0.75rem;
+  max-width: 220px;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .stations-map-shell :deep(.leaflet-control-attribution) {
