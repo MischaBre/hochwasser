@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/vue-query";
 import Alert from "@/components/ui/alert/Alert.vue";
 import Badge from "@/components/ui/badge/Badge.vue";
 import Button from "@/components/ui/button/Button.vue";
+import HydrographChart from "@/components/charts/HydrographChart.vue";
 import Card from "@/components/ui/card/Card.vue";
 import CardContent from "@/components/ui/card/CardContent.vue";
 import CardHeader from "@/components/ui/card/CardHeader.vue";
@@ -13,7 +14,7 @@ import { useI18n } from "vue-i18n";
 import { ApiError } from "@/api/client";
 import { useFormatters } from "@/composables/useFormatters";
 import { getJobOutbox, getJobStatus, listJobs } from "@/features/jobs/api";
-import { listStations } from "@/features/stations/api";
+import { listStationForecast, listStationMeasurements, listStations } from "@/features/stations/api";
 
 const route = useRoute();
 const router = useRouter();
@@ -51,6 +52,25 @@ const stationQuery = useQuery({
 });
 
 const station = computed(() => stationQuery.data.value?.items[0] ?? null);
+
+const stationSeriesQuery = useQuery({
+  queryKey: computed(() => [
+    "station-series",
+    "job-details",
+    job.value?.station_uuid || "",
+  ]),
+  queryFn: async () => {
+    const stationUuid = job.value?.station_uuid || "";
+    const [measurements, forecast] = await Promise.all([
+      listStationMeasurements(stationUuid, "P3D"),
+      listStationForecast(stationUuid),
+    ]);
+    return { measurements, forecast };
+  },
+  enabled: computed(() => Boolean(job.value?.station_uuid)),
+  staleTime: 2 * 60 * 1000,
+  refetchInterval: 2 * 60 * 1000,
+});
 
 const statusQuery = useQuery({
   queryKey: computed(() => ["job-status", jobUuid.value]),
@@ -334,6 +354,22 @@ const translateOutboxStatus = (value: string): string => {
             </div>
           </div>
         </div>
+      </CardContent>
+    </Card>
+
+    <Card v-if="job">
+      <CardHeader>
+        <CardTitle>{{ t("jobDetails.hydrograph.title") }}</CardTitle>
+      </CardHeader>
+      <CardContent class="space-y-3">
+        <HydrographChart
+          :measurements="stationSeriesQuery.data.value?.measurements ?? []"
+          :forecast="stationSeriesQuery.data.value?.forecast ?? []"
+          :limit="job.limit_cm"
+        />
+        <p class="text-xs text-muted-foreground">
+          {{ t("jobDetails.hydrograph.copy") }}
+        </p>
       </CardContent>
     </Card>
 

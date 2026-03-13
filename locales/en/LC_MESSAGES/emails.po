@@ -147,3 +147,15 @@ msgstr "crossing reached"
 
 msgid "state_crossing_soon_over"
 msgstr "crossing soon over"
+
+msgid "state_intro_no_crossing"
+msgstr "No threshold crossing is expected right now. We will notify you as soon as the outlook worsens."
+
+msgid "state_intro_crossing_incoming"
+msgstr "The forecast indicates an upcoming threshold crossing. Please monitor the situation closely."
+
+msgid "state_intro_crossing_active"
+msgstr "The threshold is already reached or exceeded in this example. This mirrors an active alert email."
+
+msgid "state_intro_crossing_soon_over"
+msgstr "The threshold is still exceeded at the moment, but the forecast suggests the situation will calm soon."

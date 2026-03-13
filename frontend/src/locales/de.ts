@@ -133,6 +133,51 @@ const de = {
         copy: "Wenn der Pegel den Wert erreicht oder sich die Lage verschärft, wirst du automatisch informiert.",
       },
     },
+    example: {
+      kicker: "Vorschau",
+      title: "So sehen Graph und Karten-Interaktion aus",
+      copy: "Die Station Köln ist vorausgewählt. Klick auf eine Station in der Karte, und der Beispiel-Graph wird direkt aktualisiert.",
+      loading: "Lade Station...",
+      limitLabel: "Grenzwert:",
+      state: "Zustand: {value}",
+      stationCount: "Stationen auf der Karte: {value}",
+      mapHint: "Klicke auf einen Stationspunkt, um den Beispiel-Hydrographen zu aktualisieren.",
+      stateValues: {
+        no_crossing: "Keine Überschreitung",
+        crossing_incoming: "Überschreitung bevorstehend",
+        crossing_active: "Überschreitung aktiv",
+        crossing_soon_over: "Überschreitung endet bald",
+      },
+      email: {
+        previewTitle: "Beispiel-E-Mail",
+        fromLabel: "Von:",
+        toLabel: "An:",
+        subjectLabel: "Betreff:",
+        subject: "[Hochwasser Alarm] {station}: {limit} {unit} erreicht",
+        sectionStationInformation: "Stationsinformationen",
+        sectionAlertContext: "Alarmkontext",
+        stationNumberLine: "Stationsnummer: {value}",
+        longNameLine: "Langname: {value}",
+        waterBodyLine: "Gewässer: {value}",
+        thresholdLine: "Grenzwert: {value} cm",
+        currentValueLine: "Aktueller Wert: {value} (um {time})",
+        triggerSourceLine: "Auslöserquelle: {value}",
+        triggerTimeLine: "Auslösezeit: {value}",
+        maxForecastLine: "Maximaler Vorhersagewert: {value} (um {time})",
+        triggerSourceCurrent: "aktuell",
+        triggerSourceOfficial: "vorhersage",
+        introValues: {
+          no_crossing:
+            "Aktuell wird keine Grenzwertüberschreitung erwartet. Wir informieren dich, sobald sich die Prognose verschärft.",
+          crossing_incoming:
+            "Die Prognose zeigt eine bevorstehende Grenzwertüberschreitung. Bitte beobachte die Lage aufmerksam.",
+          crossing_active:
+            "Der Grenzwert ist im Beispiel bereits erreicht oder überschritten. Diese Nachricht entspricht einer aktiven Warnung.",
+          crossing_soon_over:
+            "Der Grenzwert ist aktuell noch überschritten, laut Prognose wird sich die Lage jedoch bald entspannen.",
+        },
+      },
+    },
     footer: {
       source:
         "Nur zur Information: Offizielle Warnungen und Anweisungen von Behörden haben immer Vorrang.",
@@ -436,6 +481,10 @@ const de = {
         dead: "Endgültig fehlgeschlagen",
         cancelled: "Abgebrochen",
       },
+    },
+    hydrograph: {
+      title: "Hydrograph mit Prognose",
+      copy: "Gemessene Werte (durchgezogen), Prognosewerte (gestrichelt) und dein Grenzwert werden zusammen angezeigt.",
     },
   },
   notFound: {

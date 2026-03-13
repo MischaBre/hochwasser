@@ -53,7 +53,11 @@ from api_app.schemas import (
     StationMeasurementResponse,
     StationSummaryResponse,
 )
-from api_app.stations import list_station_measurements, list_stations
+from api_app.stations import (
+    list_station_forecast,
+    list_station_measurements,
+    list_stations,
+)
 from api_app.supabase_admin import delete_auth_user
 
 app = FastAPI(title="Hochwasser API", version="0.1.0")
@@ -265,6 +269,63 @@ def get_station_measurements(
 ) -> list[StationMeasurementResponse]:
     del actor
     rows = list_station_measurements(station_uuid=station_uuid, start=start)
+    return [StationMeasurementResponse(**row.__dict__) for row in rows]
+
+
+@app.get(
+    "/v1/stations/{station_uuid}/forecast",
+    response_model=list[StationMeasurementResponse],
+)
+def get_station_forecast(
+    station_uuid: str,
+    actor: ActorDep,
+) -> list[StationMeasurementResponse]:
+    del actor
+    rows = list_station_forecast(station_uuid=station_uuid)
+    return [StationMeasurementResponse(**row.__dict__) for row in rows]
+
+
+@app.get("/v1/public/stations", response_model=StationListResponse)
+def get_public_stations(
+    search: str = Query(default="", max_length=120),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    uuids: str = Query(default="", max_length=10000),
+) -> StationListResponse:
+    requested_uuids = tuple(
+        candidate.strip() for candidate in uuids.split(",") if candidate.strip()
+    )
+    rows = list_stations(
+        search=search,
+        limit=limit,
+        offset=offset,
+        uuids=requested_uuids,
+    )
+    return StationListResponse(
+        items=[StationSummaryResponse(**row.__dict__) for row in rows],
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.get(
+    "/v1/public/stations/{station_uuid}/measurements",
+    response_model=list[StationMeasurementResponse],
+)
+def get_public_station_measurements(
+    station_uuid: str,
+    start: str = Query(default="P3D", max_length=32),
+) -> list[StationMeasurementResponse]:
+    rows = list_station_measurements(station_uuid=station_uuid, start=start)
+    return [StationMeasurementResponse(**row.__dict__) for row in rows]
+
+
+@app.get(
+    "/v1/public/stations/{station_uuid}/forecast",
+    response_model=list[StationMeasurementResponse],
+)
+def get_public_station_forecast(station_uuid: str) -> list[StationMeasurementResponse]:
+    rows = list_station_forecast(station_uuid=station_uuid)
     return [StationMeasurementResponse(**row.__dict__) for row in rows]
 
 

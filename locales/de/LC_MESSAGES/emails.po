@@ -147,3 +147,15 @@ msgstr "grenzwert erreicht"
 
 msgid "state_crossing_soon_over"
 msgstr "grenzwert bald unterschritten"
+
+msgid "state_intro_no_crossing"
+msgstr "Aktuell wird keine Grenzwertüberschreitung erwartet. Wir informieren dich, sobald sich die Prognose verschärft."
+
+msgid "state_intro_crossing_incoming"
+msgstr "Die Prognose zeigt eine bevorstehende Grenzwertüberschreitung. Bitte beobachte die Lage aufmerksam."
+
+msgid "state_intro_crossing_active"
+msgstr "Der Grenzwert ist im Beispiel bereits erreicht oder überschritten. Diese Nachricht entspricht einer aktiven Warnung."
+
+msgid "state_intro_crossing_soon_over"
+msgstr "Der Grenzwert ist aktuell noch überschritten, laut Prognose wird sich die Lage jedoch bald entspannen."
